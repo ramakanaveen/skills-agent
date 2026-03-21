@@ -1,0 +1,37 @@
+# Environment
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Agent runtime data — never commit
+backend/outputs/
+backend/uploads/
+backend/sessions/
+
+# Private skills — yours only, not shared
+backend/skills/private/
+!backend/skills/private/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
