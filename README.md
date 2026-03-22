@@ -33,6 +33,7 @@ npm run dev
 skills-agent/
 ├── .env                          # ANTHROPIC_API_KEY (never committed)
 ├── .gitignore
+├── CLAUDE.md                     # Claude Code context file
 ├── backend/
 │   ├── main.py                   # FastAPI routes + agentic loop (SSE streaming)
 │   ├── context_assembler.py      # Builds system prompt from workspace/ + skills
@@ -48,18 +49,18 @@ skills-agent/
 │   │   └── TOOLS.md              # Tool descriptions
 │   ├── skills/
 │   │   ├── public/               # Committed to git — shared with everyone
-│   │   │   ├── docx/SKILL.md
-│   │   │   ├── skill-creator/SKILL.md
-│   │   │   ├── scripture/SKILL.md
-│   │   │   ├── travel-planner/SKILL.md
-│   │   │   ├── pdf-analyst/SKILL.md
-│   │   │   ├── folder-summariser/SKILL.md
-│   │   │   └── data-analyst/SKILL.md
+│   │   │   ├── docx/SKILL.md           # Create Word documents (Node.js)
+│   │   │   ├── skill-creator/SKILL.md  # Meta-skill: write new skills
+│   │   │   ├── scripture/SKILL.md      # Bible verse lookup
+│   │   │   ├── travel-planner/SKILL.md # Trip planning
+│   │   │   ├── pdf-analyst/SKILL.md    # PDF summarisation via analyze_file
+│   │   │   ├── folder-summariser/SKILL.md # Batch-process all files in a folder
+│   │   │   └── data-analyst/SKILL.md   # CSV/JSON analysis with matplotlib charts
 │   │   └── private/              # Gitignored — yours only
 │   ├── outputs/{session_id}/     # Per-session generated files (gitignored)
 │   ├── uploads/                  # User-uploaded files (gitignored)
 │   ├── sessions/                 # JSONL audit trails (gitignored)
-│   └── tests/                   # 95 pytest tests
+│   └── tests/                    # 109 pytest tests
 │       ├── conftest.py
 │       ├── test_api.py
 │       ├── test_context_assembler.py
@@ -74,14 +75,45 @@ skills-agent/
         ├── index2.css            # Global styles
         ├── main.jsx              # Entry point, theme applied before first render
         └── components/
-            ├── ChatView.jsx      # Conversational UI with markdown + inline tool trace
+            ├── ChatView.jsx      # Chat bubbles, markdown + inline charts, collapsible trace
             ├── ReplyBar.jsx      # Always-visible reply input, file upload
-            ├── OutputPanel.jsx   # 4 tabs: Output Files, Sessions, Context, Transcript
+            ├── OutputPanel.jsx   # 5 tabs: Preview, Output Files, Sessions, Context, Transcript
             ├── SkillDirectory.jsx# Skill cards, category filters, usage stats
             ├── ThemeToggle.jsx   # Theme switcher dropdown
             ├── AgentTrace.jsx    # Collapsible tool call / result events
             └── ContextInspector.jsx
 ```
+
+## UI Layout
+
+The interface is split into two independently scrollable panels with a **draggable divider**:
+
+```
+┌─────────────────────┬─┬──────────────────────┐
+│   Chat (left)       │ │   Right panel        │
+│                     │◄►│                      │
+│ [▶ Agent processing]│ │ [Preview][Files]...  │
+│ Markdown response   │ │                      │
+│ Inline charts       │ │ Rendered output      │
+│                     │ │ File dropdown        │
+├─────────────────────┤ │                      │
+│ [Reply bar]         │ │                      │
+└─────────────────────┴─┴──────────────────────┘
+```
+
+- Drag the divider to resize panels (20–80% range, persisted to localStorage)
+- Left panel: conversation, collapsible agent trace, inline chart images
+- Right panel: 5 tabs described below
+
+## Right panel tabs
+
+| Tab | Purpose |
+|---|---|
+| **Preview** | Auto-activates when task completes. Renders the latest output file (markdown with tables/charts, images). File dropdown to switch between outputs. |
+| **Output Files** | List all generated files with preview and download. Export to PDF or combined Markdown. |
+| **Sessions** | List and resume past sessions. |
+| **Context** | Live context inspector — which skills are loaded, uploaded files. |
+| **Transcript** | Full JSONL audit trail for the session. |
 
 ## Configuration
 
@@ -98,6 +130,7 @@ agent:
 
 tools:
   run_code_timeout: 30             # SKILLS_AGENT_TOOLS_RUN_CODE_TIMEOUT
+  text_file_limit: 50000           # SKILLS_AGENT_TOOLS_TEXT_FILE_LIMIT
 ```
 
 Frontend API endpoints and UI constants are centralised in `frontend/src/config.js` and can be overridden via `VITE_*` env vars:
@@ -135,10 +168,6 @@ backend/skills/
 
 Every skill is a folder with a `SKILL.md`:
 
-```
-backend/skills/public/my-skill/SKILL.md
-```
-
 ```markdown
 ---
 name: my-skill
@@ -162,6 +191,8 @@ category: utility   # utility | creation | planning | development
 Produces output.py in outputs/{session_id}/
 ```
 
+No code changes needed — `skill_loader.py` auto-discovers it on the next run.
+
 ### Available tools (inside skills)
 
 | Tool | Purpose |
@@ -171,7 +202,7 @@ Produces output.py in outputs/{session_id}/
 | `run_code(filename, runtime)` | Execute a script from `outputs/{session_id}/`, runtime = `python3` or `node` |
 | `list_files(directory)` | Top-level listing of `skills/`, `uploads/`, or `outputs/` |
 | `scan_folder(directory, extensions?)` | Recursive scan with file metadata; optional extension filter e.g. `[".pdf", ".csv"]` |
-| `analyze_file(path, question?)` | Understand any file — PDFs and images sent to Claude natively (tables, charts, scanned pages all work); text files returned directly. Optional `question` focuses the analysis. |
+| `analyze_file(path, question?)` | Understand any file — PDFs and images sent to Claude natively (tables, charts, scanned pages); text files returned directly. Optional `question` focuses the analysis. |
 
 ### The meta-skill: skill-creator
 

@@ -43,6 +43,9 @@ added by dropping a new `SKILL.md` into `backend/skills/public/` or
    constants live in `frontend/src/config.js`. Never hardcode `/api/...`
    in components.
 
+7. **Markdown rendering uses remark-gfm.** All `<ReactMarkdown>` calls must
+   include `remarkPlugins={[remarkGfm]}` to render tables correctly.
+
 ---
 
 ## Project layout
@@ -70,7 +73,7 @@ skills-agent/
 │   │   │   ├── travel-planner/ # Trip planning
 │   │   │   ├── pdf-analyst/    # PDF summarisation via analyze_file
 │   │   │   ├── folder-summariser/ # Batch-process all files in a folder
-│   │   │   └── data-analyst/   # CSV/JSON analysis with matplotlib
+│   │   │   └── data-analyst/   # CSV/JSON analysis with matplotlib + tabulate
 │   │   └── private/            # Gitignored — local only
 │   ├── outputs/                # Gitignored — per-session subdirs
 │   ├── uploads/                # Gitignored — user uploads
@@ -84,15 +87,15 @@ skills-agent/
 │       └── test_api.py
 └── frontend/
     └── src/
-        ├── App.jsx             # Root: chat state, session mgmt, SSE handler
+        ├── App.jsx             # Root: chat state, session mgmt, SSE handler, panel resize
         ├── config.js           # API endpoints + UI constants
         ├── themes.js           # 4 themes via CSS variables + localStorage
         ├── index2.css          # Global styles
         ├── main.jsx            # Entry point
         └── components/
-            ├── ChatView.jsx    # Chat bubbles + markdown rendering
+            ├── ChatView.jsx    # Chat bubbles, markdown + inline charts, collapsible trace
             ├── ReplyBar.jsx    # Input bar + file upload
-            ├── OutputPanel.jsx # 4 tabs: Files, Sessions, Context, Transcript
+            ├── OutputPanel.jsx # 5 tabs: Preview, Output Files, Sessions, Context, Transcript
             ├── SkillDirectory.jsx
             ├── ThemeToggle.jsx
             ├── AgentTrace.jsx  # Collapsible tool call/result events
@@ -114,6 +117,23 @@ skills-agent/
 
 `analyze_file` requires `anthropic_client` to be passed into `execute_tool()`.
 This is already done in `main.py`. Tests mock it with `MagicMock`.
+
+---
+
+## Frontend UI layout
+
+Two panels with a draggable divider (20–80%, localStorage persisted):
+
+- **Left panel**: Chat conversation, collapsible agent trace, inline chart images, ReplyBar pinned at bottom
+- **Right panel**: 5 tabs — Preview (auto-activates on completion), Output Files (with export), Sessions, Context, Transcript
+
+### Key frontend patterns
+
+- **Markdown rendering**: Always use `<ReactMarkdown remarkPlugins={[remarkGfm]}>` — never omit `remarkGfm` or tables won't render
+- **Inline images**: `ChatView.jsx` uses `makeComponents(sessionId)` to rewrite relative image src to `/api/download/{sessionId}/{filename}`
+- **Preview tab**: `PreviewPanel` in `OutputPanel.jsx` — picks latest file by reverse-alpha sort, renders markdown/images, file dropdown for switching
+- **Collapsible trace**: `AgentTurn` in `ChatView.jsx` — expands live during processing, auto-collapses when `turn.done === true`
+- **Panel resize**: `App.jsx` uses `leftWidth` state + mouse drag handlers + `leftWidthRef` to avoid stale closure on save
 
 ---
 
@@ -206,7 +226,7 @@ mirroring the real backend structure and patches `BASE`, `SESSIONS_DIR`,
 
 ## Gitignore summary
 
-Committed: source code, `skills/public/`, `workspace/`, tests, config
+Committed: source code, `skills/public/`, `workspace/`, tests, config, `CLAUDE.md`
 Not committed: `.env`, `outputs/`, `uploads/`, `sessions/`, `skills/private/`, `node_modules/`
 
 ---
