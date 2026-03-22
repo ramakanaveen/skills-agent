@@ -3,6 +3,11 @@
 This file gives Claude Code full context on the project so it can assist
 effectively without needing to re-explore the codebase each session.
 
+> **Maintenance rule:** After any code change that affects architecture,
+> tools, components, config keys, UI layout, or provider behaviour — update
+> this file in the same commit. Treat CLAUDE.md as a living document, not
+> an afterthought.
+
 ---
 
 ## What this project is
