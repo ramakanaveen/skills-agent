@@ -1,7 +1,11 @@
 # Skills Agent — Backend Configuration
+#
+# Configuration (non-secret): lives here in config.yaml
+# Secrets (API keys, tokens): live in .env — never commit .env
+#
 # All values here can be overridden with environment variables.
 # Env var name: SKILLS_AGENT_<SECTION>_<KEY> (uppercase, underscores)
-# Example: SKILLS_AGENT_MODEL_NAME=claude-opus-4-5
+# Example: SKILLS_AGENT_MODEL_NAME=claude-opus-4-6
 
 # API provider: "anthropic" (direct) or "vertex" (Google Vertex AI)
 # Override with: SKILLS_AGENT_PROVIDER
