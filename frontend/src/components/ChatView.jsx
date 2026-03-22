@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { UI } from '../config.js'
 
 const TOOL_ICONS = {
@@ -17,6 +18,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',
+    minHeight: 0,
   },
   empty: {
     margin: 'auto',
@@ -274,24 +276,98 @@ function ThinkingIndicator() {
   )
 }
 
-function AgentTurn({ turn, isLast, running }) {
+const makeComponents = (sid) => ({
+  img: ({ src, alt }) => {
+    const resolved = src && !src.startsWith('http') && !src.startsWith('/')
+      ? (sid ? `/api/download/${sid}/${src}` : `/api/download/${src}`)
+      : src
+    return (
+      <img
+        src={resolved}
+        alt={alt || ''}
+        style={{
+          maxWidth: '100%',
+          borderRadius: '6px',
+          margin: '10px 0',
+          display: 'block',
+          border: '1px solid var(--border)',
+        }}
+      />
+    )
+  }
+})
+
+function AgentTurn({ turn, isLast, running, sessionId }) {
   const hasText = turn.text && turn.text.trim().length > 0
   const hasEvents = turn.events && turn.events.length > 0
   const isThinking = isLast && running && !hasText && !hasEvents
+
+  const [traceExpanded, setTraceExpanded] = useState(isLast && running)
+
+  useEffect(() => {
+    if (turn.done) {
+      setTraceExpanded(false)
+    }
+  }, [turn.done])
+
+  const toolCalls = turn.events?.filter(e => e.stage === 'tool_call').length || 0
+  const warnings = turn.events?.filter(e => e.stage === 'warning').length || 0
 
   return (
     <div style={styles.agentTurn}>
       <div style={styles.agentLabel}>Agent</div>
       {isThinking && <ThinkingIndicator />}
       {hasEvents && (
-        <div style={styles.traceList}>
-          {turn.events.map(evt => <TraceEvent key={evt.id} evt={evt} />)}
+        <div style={{
+          border: '1px solid var(--border)',
+          borderRadius: '6px',
+          overflow: 'hidden',
+          fontSize: '11px',
+        }}>
+          {/* Collapsed header — always visible */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 10px',
+              background: 'var(--bg2)',
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}
+            onClick={() => setTraceExpanded(e => !e)}
+          >
+            <span style={{ color: 'var(--text-dim)' }}>{traceExpanded ? '▼' : '▶'}</span>
+            <span style={{ color: 'var(--text-dim)' }}>Agent processing</span>
+            <span style={{ color: 'var(--accent)', marginLeft: '4px' }}>
+              {toolCalls} tool call{toolCalls !== 1 ? 's' : ''}
+              {warnings > 0 ? ` · ${warnings} warning${warnings !== 1 ? 's' : ''}` : ''}
+            </span>
+            <span style={{ marginLeft: 'auto', color: 'var(--text-dim)', fontSize: '10px' }}>
+              {traceExpanded ? 'collapse' : 'expand'}
+            </span>
+          </div>
+
+          {/* Expanded trace events */}
+          {traceExpanded && (
+            <div style={{
+              padding: '6px',
+              background: 'var(--bg)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '3px',
+              maxHeight: '300px',
+              overflowY: 'auto',
+            }}>
+              {turn.events.map(evt => <TraceEvent key={evt.id} evt={evt} />)}
+            </div>
+          )}
         </div>
       )}
       {hasText && (
         <div style={styles.agentBubble}>
           <div className="agent-md">
-            <ReactMarkdown>{turn.text}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={makeComponents(sessionId)}>{turn.text}</ReactMarkdown>
           </div>
           {isLast && running && <span style={{ opacity: 0.5 }}>▌</span>}
         </div>
@@ -303,7 +379,7 @@ function AgentTurn({ turn, isLast, running }) {
   )
 }
 
-export default function ChatView({ turns, running }) {
+export default function ChatView({ turns, running, sessionId }) {
   const bottomRef = useRef()
 
   useEffect(() => {
@@ -330,6 +406,7 @@ export default function ChatView({ turns, running }) {
               turn={turn}
               isLast={i === turns.length - 1}
               running={running}
+              sessionId={sessionId}
             />
       ))}
       <div ref={bottomRef} />

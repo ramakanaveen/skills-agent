@@ -10,3 +10,4 @@ httpx
 pandas
 matplotlib
 seaborn
+tabulate

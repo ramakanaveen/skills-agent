@@ -10,7 +10,8 @@ const s = {
   app: {
     display: 'flex',
     flexDirection: 'column',
-    minHeight: '100vh',
+    height: '100vh',
+    overflow: 'hidden',
     background: 'var(--bg)',
     fontFamily: 'var(--font-ui)',
   },
@@ -80,21 +81,20 @@ const s = {
     display: 'flex',
     flex: 1,
     overflow: 'hidden',
-    height: 'calc(100vh - 48px)',
     minHeight: 0,
   },
   left: {
     display: 'flex',
     flexDirection: 'column',
-    width: '50%',
     borderRight: '1px solid var(--border)',
     overflow: 'hidden',
     minHeight: 0,
+    height: '100%',
   },
   right: {
     display: 'flex',
     flexDirection: 'column',
-    width: '50%',
+    flex: 1,
     overflow: 'hidden',
     minHeight: 0,
   },
@@ -153,7 +153,44 @@ export default function App2() {
   const [transcript, setTranscript] = useState([])
   const [uploadedFiles, setUploadedFiles] = useState([])
   const [running, setRunning] = useState(false)
+  const [previewReady, setPreviewReady] = useState(0)
+  const [leftWidth, setLeftWidth] = useState(() => {
+    const saved = localStorage.getItem('skills-agent-left-width')
+    return saved ? parseFloat(saved) : 50
+  })
+  const isDragging = useRef(false)
+  const dragStartX = useRef(0)
+  const dragStartWidth = useRef(0)
+  const leftWidthRef = useRef(leftWidth)
   const liveTurnRef = useRef(null)
+
+  useEffect(() => { leftWidthRef.current = leftWidth }, [leftWidth])
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!isDragging.current) return
+      const container = document.getElementById('skills-agent-body')
+      if (!container) return
+      const totalWidth = container.offsetWidth
+      const delta = e.clientX - dragStartX.current
+      const newWidth = Math.min(80, Math.max(20,
+        dragStartWidth.current + (delta / totalWidth) * 100
+      ))
+      setLeftWidth(newWidth)
+    }
+    const onUp = () => {
+      if (isDragging.current) {
+        isDragging.current = false
+        localStorage.setItem('skills-agent-left-width', String(leftWidthRef.current))
+      }
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [])
 
   useEffect(() => {
     fetch(API.skills).then(r => r.json()).then(setSkills).catch(() => {})
@@ -247,9 +284,11 @@ export default function App2() {
             }
             if (evt.stage === 'complete') {
               setOutputFiles(evt.output_files || [])
+              setPreviewReady(n => n + 1)
               updateLive(t => ({ ...t, done: true }))
               fetch(API.skills).then(r => r.json()).then(setSkills)
-              if (evt.session_id) fetch(API.session(evt.session_id)).then(r => r.json()).then(setTranscript).catch(() => {})
+              if (evt.session_id) fetch(API.session(evt.session_id))
+                .then(r => r.json()).then(setTranscript).catch(() => {})
             }
           } catch (e) { /* ignore */ }
         }
@@ -316,9 +355,9 @@ export default function App2() {
         <ThemeToggle />
       </div>
 
-      <div style={s.body}>
+      <div id="skills-agent-body" style={s.body}>
         {/* Left — chat */}
-        <div style={s.left}>
+        <div style={{ ...s.left, width: `${leftWidth}%` }}>
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
               {sessionId ? `Session ${sessionId.slice(0, 8)}…` : 'New session'}
@@ -327,7 +366,7 @@ export default function App2() {
               <button style={s.newSessionBtn} onClick={newSession}>+ New</button>
             )}
           </div>
-          <ChatView turns={turns} running={running} />
+          <ChatView turns={turns} running={running} sessionId={sessionId} />
           <ReplyBar
             onSend={handleSend}
             running={running}
@@ -336,6 +375,25 @@ export default function App2() {
             hasHistory={turns.length > 0}
           />
         </div>
+
+        {/* Draggable divider */}
+        <div
+          style={{
+            width: '4px',
+            background: 'var(--border)',
+            cursor: 'col-resize',
+            flexShrink: 0,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--accent)'}
+          onMouseLeave={e => { if (!isDragging.current) e.currentTarget.style.background = 'var(--border)' }}
+          onMouseDown={e => {
+            isDragging.current = true
+            dragStartX.current = e.clientX
+            dragStartWidth.current = leftWidth
+            e.preventDefault()
+          }}
+        />
 
         {/* Right — skill directory + outputs */}
         <div style={s.right}>
@@ -363,6 +421,7 @@ export default function App2() {
                 readSkills={readSkills}
                 uploadedFiles={uploadedFiles}
                 onResumeSession={loadSession}
+                forcePreview={previewReady}
               />
             )}
           </div>

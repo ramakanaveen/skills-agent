@@ -33,7 +33,7 @@ import subprocess, sys
 # Install dependencies silently if missing
 subprocess.run(
     [sys.executable, "-m", "pip", "install",
-     "pandas", "matplotlib", "seaborn", "--quiet"],
+     "pandas", "matplotlib", "seaborn", "tabulate", "--quiet"],
     capture_output=True
 )
 
@@ -44,6 +44,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import json
 from pathlib import Path
+from datetime import datetime
 
 # Load data — script runs from outputs/{session_id}/
 # so uploads are at ../../uploads/ relative to script
@@ -65,7 +66,22 @@ plt.close()
 
 # Save text report
 report = f"""# Analysis Report
-...
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+## Dataset Overview
+- Shape: {df.shape}
+- Columns: {', '.join(df.columns.tolist())}
+
+## Key Statistics
+
+{df.describe().to_markdown()}
+
+## Visual Analysis
+
+![Data Visualisation](chart_{timestamp}.png)
+
+## Insights
+[key findings from the data]
 """
 (Path(__file__).parent / "report_{timestamp}.md").write_text(report)
 print("Done.")
@@ -82,6 +98,9 @@ print("Done.")
 6. Report findings to the user:
    - Summarise key statistics from stdout
    - Mention output files produced
+   - Include `![Chart Description](chart_{timestamp}.png)` in the markdown report at the relevant section
+   - In the chat response, include the same image reference so charts appear inline in the conversation
+   - The image filename used in the markdown MUST exactly match the PNG file that was saved
 
 ## Output files (all in outputs/{session_id}/)
 - analysis_{timestamp}.py  — the script
