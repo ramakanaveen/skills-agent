@@ -50,10 +50,12 @@ def client(tmp_backend, monkeypatch):
     (tmp_backend / "outputs").mkdir(exist_ok=True)
     (tmp_backend / "sessions").mkdir(exist_ok=True)
 
-    # Patch the anthropic client
+    # Patch the anthropic client via the provider
     mock_messages = MagicMock()
     mock_messages.create.return_value = _make_end_turn_response()
-    monkeypatch.setattr(main.anthropic_client, "messages", mock_messages)
+    mock_client = MagicMock()
+    mock_client.messages = mock_messages
+    monkeypatch.setattr(main._provider, "get_client", lambda: mock_client)
 
     return TestClient(main.app, raise_server_exceptions=True)
 

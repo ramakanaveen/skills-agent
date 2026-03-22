@@ -392,6 +392,168 @@ class TestAnalyzeFile:
         assert "ERROR" in result
 
 
+class TestSpawnAgent:
+
+    def test_skill_not_found_returns_error(self, tmp_backend):
+        """spawn_agent with nonexistent skill returns ERROR."""
+        mock_client = MagicMock()
+        result = execute_tool(
+            "spawn_agent",
+            {"task": "do something", "skill_name": "nonexistent-skill"},
+            anthropic_client=mock_client
+        )
+        assert result.startswith("ERROR: Skill not found:")
+
+    def test_no_client_returns_error(self, tmp_backend):
+        """spawn_agent without anthropic_client returns ERROR."""
+        result = execute_tool(
+            "spawn_agent",
+            {"task": "do something", "skill_name": "test-skill"},
+            anthropic_client=None
+        )
+        assert result.startswith("ERROR:")
+
+    def test_end_turn_returns_text(self, tmp_backend):
+        """spawn_agent returns text when subagent ends cleanly."""
+        mock_text_block = MagicMock()
+        mock_text_block.type = "text"
+        mock_text_block.text = "Subagent result here."
+
+        mock_response = MagicMock()
+        mock_response.stop_reason = "end_turn"
+        mock_response.content = [mock_text_block]
+
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+
+        result = execute_tool(
+            "spawn_agent",
+            {
+                "task": "summarise the test skill",
+                "skill_name": "test-skill",
+                "input_data": "some input"
+            },
+            session_id="test-sess",
+            anthropic_client=mock_client
+        )
+        assert result == "Subagent result here."
+        assert mock_client.messages.create.called
+
+    def test_tool_use_loop_then_end_turn(self, tmp_backend):
+        """spawn_agent handles one tool call then end_turn correctly."""
+        # First response: tool_use
+        tool_block = MagicMock()
+        tool_block.type = "tool_use"
+        tool_block.id = "tu_001"
+        tool_block.name = "read_file"
+        tool_block.input = {"path": "workspace/SOUL.md"}
+
+        first_response = MagicMock()
+        first_response.stop_reason = "tool_use"
+        first_response.content = [tool_block]
+
+        # Second response: end_turn with text
+        text_block = MagicMock()
+        text_block.type = "text"
+        text_block.text = "Final answer from subagent."
+
+        second_response = MagicMock()
+        second_response.stop_reason = "end_turn"
+        second_response.content = [text_block]
+
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = [
+            first_response,
+            second_response,
+        ]
+
+        result = execute_tool(
+            "spawn_agent",
+            {
+                "task": "read soul and summarise",
+                "skill_name": "test-skill",
+            },
+            session_id="test-sess",
+            anthropic_client=mock_client
+        )
+        assert result == "Final answer from subagent."
+        assert mock_client.messages.create.call_count == 2
+
+    def test_uses_custom_model(self, tmp_backend):
+        """spawn_agent passes the specified model to API call."""
+        mock_text_block = MagicMock()
+        mock_text_block.type = "text"
+        mock_text_block.text = "done"
+
+        mock_response = MagicMock()
+        mock_response.stop_reason = "end_turn"
+        mock_response.content = [mock_text_block]
+
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+
+        execute_tool(
+            "spawn_agent",
+            {
+                "task": "summarise",
+                "skill_name": "test-skill",
+                "model": "claude-haiku-4-5-20251001"
+            },
+            anthropic_client=mock_client
+        )
+        call_kwargs = mock_client.messages.create.call_args
+        assert call_kwargs.kwargs["model"] == "claude-haiku-4-5-20251001"
+
+    def test_spawn_agent_not_in_subagent_tools(self, tmp_backend):
+        """spawn_agent tool is not available to subagents (no recursion)."""
+        mock_text_block = MagicMock()
+        mock_text_block.type = "text"
+        mock_text_block.text = "done"
+
+        mock_response = MagicMock()
+        mock_response.stop_reason = "end_turn"
+        mock_response.content = [mock_text_block]
+
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+
+        execute_tool(
+            "spawn_agent",
+            {"task": "do task", "skill_name": "test-skill"},
+            anthropic_client=mock_client
+        )
+        # Check that the tools passed to the subagent do not include spawn_agent
+        call_kwargs = mock_client.messages.create.call_args
+        tool_names = {t["name"] for t in call_kwargs.kwargs["tools"]}
+        assert "spawn_agent" not in tool_names
+
+    def test_path_in_public_then_private(self, tmp_backend):
+        """spawn_agent finds skill in private/ if not in public/."""
+        priv_dir = tmp_backend / "skills" / "private" / "priv-skill"
+        priv_dir.mkdir(parents=True, exist_ok=True)
+        (priv_dir / "SKILL.md").write_text(
+            "---\nname: priv-skill\ndescription: x.\ncategory: utility\n---\n# x"
+        )
+
+        mock_text_block = MagicMock()
+        mock_text_block.type = "text"
+        mock_text_block.text = "private skill result"
+
+        mock_response = MagicMock()
+        mock_response.stop_reason = "end_turn"
+        mock_response.content = [mock_text_block]
+
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+
+        result = execute_tool(
+            "spawn_agent",
+            {"task": "use private skill", "skill_name": "priv-skill"},
+            anthropic_client=mock_client
+        )
+        assert result == "private skill result"
+
+
 class TestSessionIsolation:
     def test_session_a_file_not_visible_from_session_b(self, tmp_backend):
         """File written in session A is not returned when listing session B's outputs."""

@@ -88,7 +88,9 @@ skills-agent/
 │   │   │   ├── travel-planner/ # Trip planning
 │   │   │   ├── pdf-analyst/    # PDF summarisation via analyze_file
 │   │   │   ├── folder-summariser/ # Batch-process all files in a folder
-│   │   │   └── data-analyst/   # CSV/JSON analysis with matplotlib + tabulate
+│   │   │   ├── data-analyst/   # CSV/JSON analysis with matplotlib + tabulate
+│   │   │   ├── orchestrator/   # Multi-step pipeline coordination via spawn_agent
+│   │   │   └── skill-improver/ # Post-task skill evolution
 │   │   └── private/            # Gitignored — local only
 │   ├── outputs/                # Gitignored — per-session subdirs
 │   ├── uploads/                # Gitignored — user uploads
@@ -129,6 +131,7 @@ skills-agent/
 | `list_files` | `directory` | Non-recursive directory listing |
 | `scan_folder` | `directory, extensions?` | Recursive scan with file metadata + optional extension filter |
 | `analyze_file` | `path, question?` | PDFs/images → sent to Claude API natively; text files → returned directly |
+| `spawn_agent` | `task, skill_name, input_data?, model?` | Spin up an isolated subagent with one skill; runs its own agentic loop; returns final text. Requires `anthropic_client`. |
 
 `analyze_file` requires `anthropic_client` to be passed into `execute_tool()`.
 This is already done in `main.py`. Tests mock it with `MagicMock`.
@@ -168,6 +171,9 @@ Two panels with a draggable divider (20–80%, localStorage persisted):
 4. Add tests in `test_tool_executor.py` following the existing class pattern
 
 5. Add icon to `TOOL_ICONS` in `frontend/src/components/AgentTrace.jsx`
+
+   Note: `spawn_agent` is intentionally excluded from the subagent tool list
+   inside its own implementation. Never add it back — this prevents recursive spawning.
 
 ---
 
@@ -250,5 +256,5 @@ Not committed: `.env`, `outputs/`, `uploads/`, `sessions/`, `skills/private/`, `
 
 ## Current branch
 
-Working branch: `skill-101-102-103`
+Working branch: `issue5-add-spawn-agent-tool`
 Main is stable and merged.

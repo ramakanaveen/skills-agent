@@ -143,6 +143,64 @@ def build_tools() -> list:
             }
         },
         {
+            "name": "spawn_agent",
+            "description": (
+                "Spawn a focused subagent to handle one specific part of a "
+                "larger task. The subagent gets a single skill loaded into "
+                "its context and runs its own agentic loop to completion, "
+                "then returns its result as text. "
+                "Use this to delegate specialised steps: for example, spawn "
+                "a pdf-analyst subagent to summarise each PDF in a batch, "
+                "then synthesise all results yourself. "
+                "The subagent shares your session so its output files are "
+                "available in the same outputs folder. "
+                "Use model='claude-haiku-4-5-20251001' for subagents doing "
+                "straightforward extraction or summarisation to reduce cost. "
+                "Use the default model for subagents doing reasoning or writing."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "description": (
+                            "Specific instruction for the subagent. "
+                            "Be precise — the subagent only sees this task "
+                            "and its one skill, not your full conversation."
+                        )
+                    },
+                    "skill_name": {
+                        "type": "string",
+                        "description": (
+                            "Folder name of the skill to give the subagent. "
+                            "e.g. 'pdf-analyst', 'data-analyst', "
+                            "'folder-summariser'. "
+                            "The subagent will load this skill and follow "
+                            "its instructions."
+                        )
+                    },
+                    "input_data": {
+                        "type": "string",
+                        "description": (
+                            "Data or context to pass to the subagent. "
+                            "e.g. a filename, a snippet of text, a question "
+                            "to answer. Truncated to 8000 chars."
+                        )
+                    },
+                    "model": {
+                        "type": "string",
+                        "description": (
+                            "Optional. Model for the subagent to use. "
+                            "Defaults to the main model. "
+                            "Use 'claude-haiku-4-5-20251001' for simple "
+                            "extraction/summarisation tasks to reduce cost."
+                        )
+                    }
+                },
+                "required": ["task", "skill_name"]
+            }
+        },
+        {
             "name": "analyze_file",
             "description": (
                 "Read and understand any file — PDF, image, or plain text. "

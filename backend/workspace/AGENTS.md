@@ -12,3 +12,13 @@ Rules — always follow these:
 10. For PDF files and images, use the analyze_file tool — do not use read_file on PDFs
 11. For data files (CSV, JSON), use the data-analyst skill
 12. For multiple uploaded files, use the folder-summariser skill
+13. For batch tasks with many files (5+), use spawn_agent to
+    delegate each file to a focused subagent. This keeps your
+    context clean and prevents token overflow. You synthesise
+    the returned summaries, you do not read every file directly.
+14. Use cheaper model (claude-haiku-4-5-20251001) for subagents
+    doing simple extraction, summarisation, or data reading.
+    Use default model for subagents that need to reason, write,
+    or produce complex output.
+15. After a batch task, offer to improve the relevant skill using
+    skill-improver if any gaps or issues were encountered.
