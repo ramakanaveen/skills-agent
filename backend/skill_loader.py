@@ -28,6 +28,7 @@ def _scan_dir(root_dir: str, visibility: str) -> List[Dict]:
 
             name = os.path.basename(dirpath)
             description = f"Skill: {name}"
+            category = "utility"
 
             if content.startswith("---"):
                 parts = content.split("---", 2)
@@ -37,12 +38,14 @@ def _scan_dir(root_dir: str, visibility: str) -> List[Dict]:
                         name = frontmatter.get("name", name)
                         desc = frontmatter.get("description", description)
                         description = desc.strip() if isinstance(desc, str) else description
+                        category = frontmatter.get("category", "utility")
 
             skills.append({
                 "name": name,
                 "description": description,
                 "skill_md_path": rel_path,
                 "visibility": visibility,
+                "category": category,
             })
 
         except Exception as e:

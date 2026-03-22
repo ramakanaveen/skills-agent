@@ -1,5 +1,6 @@
 ---
 name: scripture
+category: utility
 description: >
   Use this skill when users ask for religious texts, verses, slokas, chapters,
   or quotes from scriptures like Bhagavad Gita, Ramayana, Mahabharata, Bible,

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { API } from '../config.js'
 
 const styles = {
   container: {
@@ -105,7 +106,7 @@ export default function ReplyBar({ onSend, running, uploadedFiles, setUploadedFi
       const form = new FormData()
       form.append('file', file)
       try {
-        const res = await fetch('/api/upload', { method: 'POST', body: form })
+        const res = await fetch(API.upload, { method: 'POST', body: form })
         const data = await res.json()
         setUploadedFiles(prev => [...prev, { name: data.filename, path: data.path }])
       } catch (err) {

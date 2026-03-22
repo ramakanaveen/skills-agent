@@ -2,6 +2,8 @@ import os
 import json
 import subprocess
 
+from config import cfg
+
 BASE = os.path.abspath(os.path.dirname(__file__))
 ALLOWED_ROOTS = ["skills", "uploads", "outputs", "workspace"]
 
@@ -80,12 +82,12 @@ def execute_tool(name: str, input_data: dict, session_id: str = None) -> str:
                 [runtime, path],
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=cfg.run_code_timeout,
                 cwd=cwd,
             )
             return json.dumps({
-                "stdout": result.stdout[-3000:],
-                "stderr": result.stderr[-2000:],
+                "stdout": result.stdout[-cfg.run_code_stdout_limit:],
+                "stderr": result.stderr[-cfg.run_code_stderr_limit:],
                 "exit_code": result.returncode
             })
 
@@ -113,7 +115,7 @@ def execute_tool(name: str, input_data: dict, session_id: str = None) -> str:
         return f"ERROR: Security violation — {e}"
     except subprocess.TimeoutExpired:
         return json.dumps({
-            "error": "Execution timed out after 30 seconds",
+            "error": f"Execution timed out after {cfg.run_code_timeout} seconds",
             "exit_code": -1
         })
     except Exception as e:

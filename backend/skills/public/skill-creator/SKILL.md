@@ -1,5 +1,6 @@
 ---
 name: skill-creator
+category: utility
 description: >
   Use this skill whenever no existing skill matches the user's task,
   or when asked to "create a skill", "write a skill", "add a skill for",

@@ -4,3 +4,6 @@ anthropic
 python-dotenv
 pyyaml
 python-multipart
+pytest
+pytest-asyncio
+httpx

@@ -16,6 +16,7 @@ import skill_loader
 import context_assembler
 import tool_executor
 import session as session_module
+from config import cfg
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
@@ -23,7 +24,7 @@ app = FastAPI(title="Skills Agent API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=cfg.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -118,17 +119,17 @@ async def _agent_stream(body: RunRequest):
 
     yield sse({"stage": "start", "session_id": session_id})
 
-    for iteration in range(20):  # hard cap
+    for iteration in range(cfg.max_iterations):
         # Context budget guard
         context_size = len(json.dumps(messages, default=str)) // 4
-        if context_size > 150000:
-            messages = messages[-16:]
+        if context_size > cfg.context_budget:
+            messages = messages[-cfg.context_trim_keep:]
             yield sse({"stage": "warning", "text": "Context trimmed to stay within limits"})
 
         try:
             response = anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=8096,
+                model=cfg.model_name,
+                max_tokens=cfg.max_tokens,
                 system=system_prompt,
                 tools=tools,
                 messages=messages,
@@ -169,7 +170,7 @@ async def _agent_stream(body: RunRequest):
                 yield sse({
                     "stage": "tool_result",
                     "tool": block.name,
-                    "result": result[:500],
+                    "result": result[:cfg.result_preview_chars],
                     "full_length": len(result),
                 })
 
@@ -232,6 +233,34 @@ async def download_file(session_id: str, filename: str):
 @app.get("/api/session/{session_id}")
 async def get_session(session_id: str):
     return session_module.read_transcript(session_id)
+
+
+@app.get("/api/skill-stats")
+async def get_skill_stats():
+    """Return usage count per skill derived from session transcripts."""
+    stats = {}
+    if not os.path.isdir(SESSIONS_DIR):
+        return stats
+    for fname in os.listdir(SESSIONS_DIR):
+        if not fname.endswith(".jsonl"):
+            continue
+        path = os.path.join(SESSIONS_DIR, fname)
+        try:
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    record = json.loads(line.strip())
+                    if record.get("tool_name") == "read_file":
+                        inp = record.get("tool_input", {})
+                        p = inp.get("path", "") if isinstance(inp, dict) else ""
+                        if "SKILL.md" in p:
+                            # Extract skill name from path
+                            parts = p.replace("\\", "/").split("/")
+                            if len(parts) >= 2:
+                                skill_name = parts[-2]
+                                stats[skill_name] = stats.get(skill_name, 0) + 1
+        except Exception:
+            continue
+    return stats
 
 
 @app.get("/api/health")

@@ -1,5 +1,6 @@
 ---
 name: docx
+category: creation
 description: >
   Use this skill when the user asks to create a Word document, .docx file,
   report, project status report, proposal, or any formatted document output.

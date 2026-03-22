@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import ContextInspector from './ContextInspector.jsx'
+import { API, UI } from '../config.js'
 
 const styles = {
   container: {
@@ -193,7 +194,7 @@ function FileCard({ filename, sessionId }) {
     try {
       const res = await fetch(downloadUrl)
       const text = await res.text()
-      setPreview(text.slice(0, 2000))
+      setPreview(text.slice(0, UI.filePreviewChars))
       setExpanded(true)
     } catch {
       setPreview('(could not load preview)')
@@ -238,7 +239,7 @@ function TranscriptEntry({ record }) {
         {record.tool_name && <span style={styles.transcriptTool}>[{record.tool_name}]</span>}
       </div>
       <div style={styles.transcriptContent}>
-        {record.content?.slice(0, 300) || '(no content)'}
+        {record.content?.slice(0, UI.transcriptEntryChars) || '(no content)'}
       </div>
     </div>
   )
@@ -260,7 +261,7 @@ function SessionsPanel({ currentSessionId, onResume }) {
   const load = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/sessions')
+      const res = await fetch(API.sessions)
       setSessions(await res.json())
     } catch (e) {
       console.error(e)
