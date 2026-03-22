@@ -34,16 +34,21 @@ added by dropping a new `SKILL.md` into `backend/skills/public/` or
    timeouts, limits) live in `backend/config.yaml` and are loaded via
    `backend/config.py`. Import `from config import cfg` to use them.
 
-5. **New tools require two changes:** add an `elif` branch in
+5. **Provider switching is config-only.** `cfg.provider` is either `"anthropic"`
+   or `"vertex"`. Client init in `main.py` reads this and builds the right client.
+   `_active_model` holds the correct model name for the chosen provider.
+   Never reference `cfg.model_name` directly in the API call — use `_active_model`.
+
+6. **New tools require two changes:** add an `elif` branch in
    `tool_executor.py` AND add a tool definition dict in
    `context_assembler.py` `build_tools()`. Missing either = tool silently
    not available to the agent.
 
-6. **Frontend config is centralised.** All API endpoint strings and UI
+7. **Frontend config is centralised.** All API endpoint strings and UI
    constants live in `frontend/src/config.js`. Never hardcode `/api/...`
    in components.
 
-7. **Markdown rendering uses remark-gfm.** All `<ReactMarkdown>` calls must
+8. **Markdown rendering uses remark-gfm.** All `<ReactMarkdown>` calls must
    include `remarkPlugins={[remarkGfm]}` to render tables correctly.
 
 ---

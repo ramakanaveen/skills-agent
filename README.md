@@ -133,17 +133,43 @@ Clicking **⏱ History** in the session bar slides a drawer over the left panel:
 All backend tunable values live in `backend/config.yaml`. Every value can be overridden with an environment variable prefixed `SKILLS_AGENT_`:
 
 ```yaml
+provider: anthropic                  # SKILLS_AGENT_PROVIDER — "anthropic" or "vertex"
+
+vertex:
+  project_id: ""                     # SKILLS_AGENT_VERTEX_PROJECT_ID
+  region: us-east5                   # SKILLS_AGENT_VERTEX_REGION
+  base_url: ""                       # SKILLS_AGENT_VERTEX_BASE_URL (optional, corp proxy)
+
 model:
-  name: claude-sonnet-4-20250514   # SKILLS_AGENT_MODEL_NAME
-  max_tokens: 8096                  # SKILLS_AGENT_MAX_TOKENS
+  name: claude-sonnet-4-20250514     # SKILLS_AGENT_MODEL_NAME
+  vertex_name: claude-sonnet-4@20250514  # SKILLS_AGENT_MODEL_VERTEX_NAME
+  max_tokens: 8096                   # SKILLS_AGENT_MAX_TOKENS
 
 agent:
-  max_iterations: 20               # SKILLS_AGENT_AGENT_MAX_ITERATIONS
-  context_budget: 150000           # SKILLS_AGENT_AGENT_CONTEXT_BUDGET
+  max_iterations: 20                 # SKILLS_AGENT_AGENT_MAX_ITERATIONS
+  context_budget: 150000             # SKILLS_AGENT_AGENT_CONTEXT_BUDGET
 
 tools:
-  run_code_timeout: 30             # SKILLS_AGENT_TOOLS_RUN_CODE_TIMEOUT
-  text_file_limit: 50000           # SKILLS_AGENT_TOOLS_TEXT_FILE_LIMIT
+  run_code_timeout: 30               # SKILLS_AGENT_TOOLS_RUN_CODE_TIMEOUT
+  text_file_limit: 50000             # SKILLS_AGENT_TOOLS_TEXT_FILE_LIMIT
+```
+
+### Switching providers
+
+**Personal machine (Anthropic direct):**
+```bash
+# .env
+ANTHROPIC_API_KEY=sk-ant-...
+# provider defaults to "anthropic" — nothing else needed
+```
+
+**Work machine (Vertex AI):**
+```bash
+# .env
+SKILLS_AGENT_PROVIDER=vertex
+SKILLS_AGENT_VERTEX_PROJECT_ID=my-gcp-project
+SKILLS_AGENT_VERTEX_REGION=us-east5
+# Auth via Google ADC: run once → gcloud auth application-default login
 ```
 
 Frontend API endpoints and UI constants are centralised in `frontend/src/config.js` and can be overridden via `VITE_*` env vars:

@@ -3,9 +3,21 @@
 # Env var name: SKILLS_AGENT_<SECTION>_<KEY> (uppercase, underscores)
 # Example: SKILLS_AGENT_MODEL_NAME=claude-opus-4-5
 
+# API provider: "anthropic" (direct) or "vertex" (Google Vertex AI)
+# Override with: SKILLS_AGENT_PROVIDER
+provider: anthropic
+
+# Vertex AI settings — only required when provider: vertex
+vertex:
+  project_id: ""       # SKILLS_AGENT_VERTEX_PROJECT_ID
+  region: us-east5     # SKILLS_AGENT_VERTEX_REGION
+  base_url: ""         # SKILLS_AGENT_VERTEX_BASE_URL (optional — corporate proxy)
+
 model:
-  # Anthropic model ID to use for the agent
+  # Anthropic direct API model ID
   name: claude-sonnet-4-20250514
+  # Vertex AI model ID (@ separator instead of -)
+  vertex_name: claude-sonnet-4@20250514
   # Maximum tokens in a single API response
   max_tokens: 8096
 

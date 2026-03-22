@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-anthropic
+anthropic[vertex]
 python-dotenv
 pyyaml
 python-multipart

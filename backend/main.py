@@ -37,9 +37,15 @@ SESSIONS_DIR = os.path.join(os.path.dirname(__file__), "sessions")
 for d in [UPLOADS_DIR, OUTPUTS_DIR, SESSIONS_DIR]:
     os.makedirs(d, exist_ok=True)
 
-anthropic_client = anthropic.Anthropic(
-    api_key=os.getenv("ANTHROPIC_API_KEY", "")
-)
+if cfg.provider == "vertex":
+    vertex_kwargs = dict(project_id=cfg.vertex_project_id, region=cfg.vertex_region)
+    if cfg.vertex_base_url:
+        vertex_kwargs["base_url"] = cfg.vertex_base_url
+    anthropic_client = anthropic.AnthropicVertex(**vertex_kwargs)
+    _active_model = cfg.model_vertex_name
+else:
+    anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+    _active_model = cfg.model_name
 
 
 class RunRequest(BaseModel):
@@ -128,7 +134,7 @@ async def _agent_stream(body: RunRequest):
 
         try:
             response = anthropic_client.messages.create(
-                model=cfg.model_name,
+                model=_active_model,
                 max_tokens=cfg.max_tokens,
                 system=system_prompt,
                 tools=tools,
