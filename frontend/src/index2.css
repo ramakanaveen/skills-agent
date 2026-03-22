@@ -1,0 +1,71 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Deeper, blue-tinted blacks */
+  --bg:      #08090f;
+  --bg2:     #0f1017;
+  --bg3:     #181a24;
+  --bg4:     #1e2030;
+
+  /* Borders */
+  --border:  #1e2030;
+  --border2: #2a2d3e;
+
+  /* Text */
+  --text:     #e2e4f0;
+  --text-dim: #6b7280;
+  --text-mid: #9ca3af;
+
+  /* Accent — purple/indigo */
+  --accent:   #7c6af7;
+  --accent2:  #6055d4;
+  --accent-glow: rgba(124, 106, 247, 0.25);
+
+  /* Status colors */
+  --active:      #22c55e;
+  --active-bg:   rgba(34, 197, 94, 0.1);
+  --active-glow: rgba(34, 197, 94, 0.2);
+  --ready:       #f59e0b;
+  --ready-bg:    rgba(245, 158, 11, 0.1);
+  --learning:    #3b82f6;
+  --learning-bg: rgba(59, 130, 246, 0.1);
+
+  /* Category colors */
+  --cat-utility:     #7c6af7;
+  --cat-creation:    #ec4899;
+  --cat-planning:    #06b6d4;
+  --cat-development: #10b981;
+
+  /* Semantic */
+  --green:  #22c55e;
+  --yellow: #f59e0b;
+  --red:    #ef4444;
+  --orange: #f97316;
+
+  /* Fonts */
+  --font-ui:   -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  --font-mono: 'Courier New', 'Consolas', monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }

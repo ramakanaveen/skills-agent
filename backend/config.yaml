@@ -1,0 +1,33 @@
+# Skills Agent — Backend Configuration
+# All values here can be overridden with environment variables.
+# Env var name: SKILLS_AGENT_<SECTION>_<KEY> (uppercase, underscores)
+# Example: SKILLS_AGENT_MODEL_NAME=claude-opus-4-5
+
+model:
+  # Anthropic model ID to use for the agent
+  name: claude-sonnet-4-20250514
+  # Maximum tokens in a single API response
+  max_tokens: 8096
+
+agent:
+  # Hard cap on agentic loop iterations per run
+  max_iterations: 20
+  # Context window token budget (chars / 4 ≈ tokens); trim when exceeded
+  context_budget: 150000
+  # Number of most-recent messages to keep after context trim
+  context_trim_keep: 16
+
+tools:
+  # Characters of tool result sent back to the frontend for display
+  result_preview_chars: 500
+  # Max stdout/stderr kept from run_code (in chars)
+  run_code_stdout_limit: 3000
+  run_code_stderr_limit: 2000
+  # Subprocess timeout for run_code (seconds)
+  run_code_timeout: 30
+
+server:
+  # CORS allowed origins (comma-separated string or list)
+  cors_origins:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
