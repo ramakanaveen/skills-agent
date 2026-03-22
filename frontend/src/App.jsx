@@ -3,6 +3,7 @@ import ChatView from './components/ChatView.jsx'
 import ReplyBar from './components/ReplyBar.jsx'
 import SkillDirectory from './components/SkillDirectory.jsx'
 import OutputPanel from './components/OutputPanel.jsx'
+import SessionDrawer from './components/SessionDrawer.jsx'
 import ThemeToggle from './components/ThemeToggle.jsx'
 import { API, UI } from './config.js'
 
@@ -34,9 +35,7 @@ const s = {
     alignItems: 'center',
     gap: '8px',
   },
-  logoAccent: {
-    color: 'var(--accent)',
-  },
+  logoAccent: { color: 'var(--accent)' },
   navItem: {
     fontSize: '12px',
     color: 'var(--text-dim)',
@@ -90,6 +89,7 @@ const s = {
     overflow: 'hidden',
     minHeight: 0,
     height: '100%',
+    position: 'relative',  // needed for SessionDrawer absolute positioning
   },
   right: {
     display: 'flex',
@@ -98,37 +98,31 @@ const s = {
     overflow: 'hidden',
     minHeight: 0,
   },
-  // Right panel tabs
-  rightTabs: {
+  sessionBar: {
     display: 'flex',
+    alignItems: 'center',
+    padding: '6px 16px',
     borderBottom: '1px solid var(--border)',
     background: 'var(--bg2)',
-    padding: '0 16px',
     flexShrink: 0,
+    gap: '8px',
   },
-  rightTab: {
-    padding: '12px 14px',
+  sessionLabel: {
     fontSize: '12px',
-    fontWeight: '500',
     color: 'var(--text-dim)',
-    cursor: 'pointer',
-    borderBottom: '2px solid transparent',
-    userSelect: 'none',
-  },
-  rightTabActive: {
-    color: 'var(--accent)',
-    borderBottom: '2px solid var(--accent)',
-  },
-  rightPanel: {
     flex: 1,
-    overflow: 'hidden',
-    minHeight: 0,
-    display: 'flex',
-    flexDirection: 'column',
+  },
+  historyBtn: {
+    padding: '3px 10px',
+    background: 'var(--bg3)',
+    border: '1px solid var(--border2)',
+    borderRadius: '6px',
+    color: 'var(--text-dim)',
+    fontSize: '11px',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-ui)',
   },
   newSessionBtn: {
-    marginLeft: 'auto',
-    marginRight: '12px',
     padding: '3px 10px',
     background: 'var(--bg3)',
     border: '1px solid var(--border2)',
@@ -140,20 +134,19 @@ const s = {
   },
 }
 
-const NAV = ['Workspace', 'Skill Directory', 'Agent Logs', 'Artifacts']
+const NAV = ['Workspace', 'Skills']
 
-export default function App2() {
+export default function App() {
   const [activeNav, setActiveNav] = useState('Workspace')
-  const [rightTab, setRightTab] = useState(0)
   const [turns, setTurns] = useState([])
   const [sessionId, setSessionId] = useState(null)
   const [outputFiles, setOutputFiles] = useState([])
   const [skills, setSkills] = useState([])
   const [readSkills, setReadSkills] = useState(new Set())
-  const [transcript, setTranscript] = useState([])
   const [uploadedFiles, setUploadedFiles] = useState([])
   const [running, setRunning] = useState(false)
   const [previewReady, setPreviewReady] = useState(0)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [leftWidth, setLeftWidth] = useState(() => {
     const saved = localStorage.getItem('skills-agent-left-width')
     return saved ? parseFloat(saved) : 50
@@ -200,7 +193,6 @@ export default function App2() {
     setTurns([])
     setSessionId(null)
     setOutputFiles([])
-    setTranscript([])
     setReadSkills(new Set())
   }
 
@@ -228,10 +220,10 @@ export default function App2() {
         fetch(API.outputs(sid)).then(r => r.json()).catch(() => []),
       ])
       setSessionId(sid)
-      setTranscript(transcriptData)
       setTurns(reconstructTurns(transcriptData))
       setOutputFiles(files)
       setReadSkills(new Set())
+      setActiveNav('Workspace')
     } catch (e) { console.error(e) }
   }
 
@@ -287,8 +279,6 @@ export default function App2() {
               setPreviewReady(n => n + 1)
               updateLive(t => ({ ...t, done: true }))
               fetch(API.skills).then(r => r.json()).then(setSkills)
-              if (evt.session_id) fetch(API.session(evt.session_id))
-                .then(r => r.json()).then(setTranscript).catch(() => {})
             }
           } catch (e) { /* ignore */ }
         }
@@ -299,40 +289,18 @@ export default function App2() {
     setRunning(false)
   }
 
-  // "USE SKILL →" handler — pre-fills chat
-  // Nav → right tab mapping
-  const NAV_TAB = {
-    'Workspace':       null,   // no right tab change, just focus chat
-    'Skill Directory': 0,
-    'Artifacts':       1,
-    'Agent Logs':      3,
-  }
-
-  const handleNav = (nav) => {
-    setActiveNav(nav)
-    const tab = NAV_TAB[nav]
-    if (tab !== null && tab !== undefined) setRightTab(tab)
-  }
-
   const handleUseSkill = (skill) => {
     setActiveNav('Workspace')
     if (!skill) {
-      // Deploy New Skill button
       handleSend('Create a new skill for me. Ask me what it should do.')
     } else {
       handleSend(`Use the ${skill.name} skill to help me.`)
     }
   }
 
-  const rightTabs = [
-    { label: 'Skill Directory' },
-    { label: `Outputs${outputFiles.length ? ` (${outputFiles.length})` : ''}` },
-    { label: 'Sessions' },
-    { label: `Transcript${transcript.length ? ` (${transcript.length})` : ''}` },
-  ]
-
   return (
     <div style={s.app}>
+      {/* Top nav */}
       <div style={s.header}>
         <div style={s.logo}>
           <span>⚡</span>
@@ -343,7 +311,7 @@ export default function App2() {
           <div
             key={n}
             style={{ ...s.navItem, ...(activeNav === n ? s.navItemActive : {}) }}
-            onClick={() => handleNav(n)}
+            onClick={() => setActiveNav(n)}
           >
             {n}
           </div>
@@ -358,14 +326,19 @@ export default function App2() {
       <div id="skills-agent-body" style={s.body}>
         {/* Left — chat */}
         <div style={{ ...s.left, width: `${leftWidth}%` }}>
-          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)', flexShrink: 0 }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
+          {/* Session bar */}
+          <div style={s.sessionBar}>
+            <span style={s.sessionLabel}>
               {sessionId ? `Session ${sessionId.slice(0, 8)}…` : 'New session'}
             </span>
+            <button style={s.historyBtn} onClick={() => setDrawerOpen(true)}>
+              ⏱ History
+            </button>
             {turns.length > 0 && (
               <button style={s.newSessionBtn} onClick={newSession}>+ New</button>
             )}
           </div>
+
           <ChatView turns={turns} running={running} sessionId={sessionId} />
           <ReplyBar
             onSend={handleSend}
@@ -373,6 +346,15 @@ export default function App2() {
             uploadedFiles={uploadedFiles}
             setUploadedFiles={setUploadedFiles}
             hasHistory={turns.length > 0}
+          />
+
+          {/* Session history drawer — overlays left panel */}
+          <SessionDrawer
+            open={drawerOpen}
+            currentSessionId={sessionId}
+            onResume={loadSession}
+            onNewSession={newSession}
+            onClose={() => setDrawerOpen(false)}
           />
         </div>
 
@@ -395,36 +377,17 @@ export default function App2() {
           }}
         />
 
-        {/* Right — skill directory + outputs */}
+        {/* Right — output or skill directory */}
         <div style={s.right}>
-          <div style={s.rightTabs}>
-            {rightTabs.map((t, i) => (
-              <div
-                key={t.label}
-                style={{ ...s.rightTab, ...(rightTab === i ? s.rightTabActive : {}) }}
-                onClick={() => setRightTab(i)}
-              >
-                {t.label}
-              </div>
-            ))}
-          </div>
-          <div style={s.rightPanel}>
-            {rightTab === 0 && (
-              <SkillDirectory skills={skills} onUseSkill={handleUseSkill} />
-            )}
-            {rightTab !== 0 && (
-              <OutputPanel
-                outputFiles={outputFiles}
-                sessionId={sessionId}
-                transcript={transcript}
-                skills={skills}
-                readSkills={readSkills}
-                uploadedFiles={uploadedFiles}
-                onResumeSession={loadSession}
-                forcePreview={previewReady}
-              />
-            )}
-          </div>
+          {activeNav === 'Skills' ? (
+            <SkillDirectory skills={skills} onUseSkill={handleUseSkill} />
+          ) : (
+            <OutputPanel
+              outputFiles={outputFiles}
+              sessionId={sessionId}
+              forcePreview={previewReady}
+            />
+          )}
         </div>
       </div>
     </div>

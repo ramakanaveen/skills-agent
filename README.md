@@ -77,11 +77,11 @@ skills-agent/
         └── components/
             ├── ChatView.jsx      # Chat bubbles, markdown + inline charts, collapsible trace
             ├── ReplyBar.jsx      # Always-visible reply input, file upload
-            ├── OutputPanel.jsx   # 5 tabs: Preview, Output Files, Sessions, Context, Transcript
+            ├── OutputPanel.jsx   # 2 tabs: Preview, Files — output-only right panel
+            ├── SessionDrawer.jsx # Slide-in history drawer with search + date grouping
             ├── SkillDirectory.jsx# Skill cards, category filters, usage stats
             ├── ThemeToggle.jsx   # Theme switcher dropdown
-            ├── AgentTrace.jsx    # Collapsible tool call / result events
-            └── ContextInspector.jsx
+            └── AgentTrace.jsx    # Collapsible tool call / result events
 ```
 
 ## UI Layout
@@ -102,18 +102,31 @@ The interface is split into two independently scrollable panels with a **draggab
 ```
 
 - Drag the divider to resize panels (20–80% range, persisted to localStorage)
-- Left panel: conversation, collapsible agent trace, inline chart images
-- Right panel: 5 tabs described below
+- Left panel: conversation, collapsible agent trace, inline chart images, session bar with History button
+- Right panel: output-focused (Preview + Files); switches to Skill Directory when Skills nav is active
+
+## Top navigation
+
+| Item | Purpose |
+|---|---|
+| **Workspace** | Default view — chat panel with the agent |
+| **Skills** | Toggles right panel to show the Skill Directory; auto-returns to output when a task completes |
 
 ## Right panel tabs
 
 | Tab | Purpose |
 |---|---|
 | **Preview** | Auto-activates when task completes. Renders the latest output file (markdown with tables/charts, images). File dropdown to switch between outputs. |
-| **Output Files** | List all generated files with preview and download. Export to PDF or combined Markdown. |
-| **Sessions** | List and resume past sessions. |
-| **Context** | Live context inspector — which skills are loaded, uploaded files. |
-| **Transcript** | Full JSONL audit trail for the session. |
+| **Files (n)** | List all generated files with inline preview and download. Export to PDF or combined Markdown. |
+
+## Session History drawer
+
+Clicking **⏱ History** in the session bar slides a drawer over the left panel:
+- Search bar — filter by session ID or first message
+- Sessions grouped by date: Today / Yesterday / This week / Older
+- Each card shows session ID, relative timestamp, first message preview, turn count
+- Active session highlighted with accent border
+- **+ New Session** pinned at the bottom
 
 ## Configuration
 

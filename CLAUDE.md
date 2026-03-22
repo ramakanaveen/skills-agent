@@ -95,11 +95,11 @@ skills-agent/
         └── components/
             ├── ChatView.jsx    # Chat bubbles, markdown + inline charts, collapsible trace
             ├── ReplyBar.jsx    # Input bar + file upload
-            ├── OutputPanel.jsx # 5 tabs: Preview, Output Files, Sessions, Context, Transcript
+            ├── OutputPanel.jsx # 2 tabs: Preview, Files — output-only right panel
+            ├── SessionDrawer.jsx # Slide-in history drawer (search, date groups, + New)
             ├── SkillDirectory.jsx
             ├── ThemeToggle.jsx
-            ├── AgentTrace.jsx  # Collapsible tool call/result events
-            └── ContextInspector.jsx
+            └── AgentTrace.jsx  # Collapsible tool call/result events
 ```
 
 ---
@@ -124,8 +124,9 @@ This is already done in `main.py`. Tests mock it with `MagicMock`.
 
 Two panels with a draggable divider (20–80%, localStorage persisted):
 
-- **Left panel**: Chat conversation, collapsible agent trace, inline chart images, ReplyBar pinned at bottom
-- **Right panel**: 5 tabs — Preview (auto-activates on completion), Output Files (with export), Sessions, Context, Transcript
+- **Left panel**: Chat conversation, collapsible agent trace, inline chart images, ReplyBar pinned at bottom, session bar with ⏱ History button
+- **Right panel**: 2 tabs — Preview (auto-activates on completion) + Files (with export); switches to Skill Directory when Skills nav active
+- **Top nav**: `Workspace` (default chat) + `Skills` (toggles right panel to SkillDirectory, auto-returns to OutputPanel on task complete)
 
 ### Key frontend patterns
 
@@ -134,6 +135,7 @@ Two panels with a draggable divider (20–80%, localStorage persisted):
 - **Preview tab**: `PreviewPanel` in `OutputPanel.jsx` — picks latest file by reverse-alpha sort, renders markdown/images, file dropdown for switching
 - **Collapsible trace**: `AgentTurn` in `ChatView.jsx` — expands live during processing, auto-collapses when `turn.done === true`
 - **Panel resize**: `App.jsx` uses `leftWidth` state + mouse drag handlers + `leftWidthRef` to avoid stale closure on save
+- **Session drawer**: `SessionDrawer.jsx` — absolutely positioned over left panel (`position: relative` on parent), slides in via `translateX`, groups sessions by date, has search filter; triggered by ⏱ History button in session bar
 
 ---
 
