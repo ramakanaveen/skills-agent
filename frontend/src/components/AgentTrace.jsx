@@ -15,6 +15,8 @@ const TOOL_ICONS = {
   write_file: '✍️',
   run_code: '⚙️',
   list_files: '📋',
+  scan_folder: '📁',
+  analyze_file: '🔍',
 }
 
 const COLORS = {

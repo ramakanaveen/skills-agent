@@ -116,5 +116,65 @@ def build_tools() -> list:
                 },
                 "required": ["directory"]
             }
-        }
+        },
+        {
+            "name": "scan_folder",
+            "description": (
+                "Scan a folder recursively and list all files with metadata "
+                "(name, path, size, modified date). Use before batch processing "
+                "to discover what files are available. "
+                "Allowed directories: uploads/, outputs/, skills/public/, skills/private/. "
+                "Optionally filter by file extensions e.g. [\".pdf\", \".txt\"]."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "directory": {
+                        "type": "string",
+                        "description": "e.g. 'uploads/' or 'skills/public/'"
+                    },
+                    "extensions": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional filter e.g. [\".pdf\", \".txt\"]"
+                    }
+                },
+                "required": ["directory"]
+            }
+        },
+        {
+            "name": "analyze_file",
+            "description": (
+                "Read and understand any file — PDF, image, or plain text. "
+                "Sends PDFs and images directly to Claude for native understanding "
+                "— preserves tables, charts, layout, and works on scanned documents. "
+                "Plain text files (TXT, CSV, MD, JSON, PY etc) are returned as-is "
+                "without an extra API call. "
+                "Use for any uploaded file. "
+                "Optionally provide a specific question to focus the analysis. "
+                "Path must be relative to backend/ "
+                "e.g. 'uploads/report.pdf' or 'uploads/chart.png'."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": (
+                            "Path relative to backend/, "
+                            "e.g. 'uploads/report.pdf' or 'uploads/chart.png'"
+                        )
+                    },
+                    "question": {
+                        "type": "string",
+                        "description": (
+                            "Optional. Specific question about the file. "
+                            "e.g. 'What is the revenue for Q3 2023?' "
+                            "Defaults to a general description if omitted."
+                        )
+                    }
+                },
+                "required": ["path"]
+            }
+        },
     ]

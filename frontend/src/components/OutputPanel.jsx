@@ -177,7 +177,7 @@ const styles = {
   },
 }
 
-const PREVIEWABLE = ['.md', '.txt', '.py', '.js', '.ts', '.jsx', '.tsx', '.json', '.yaml', '.yml', '.html', '.css']
+const PREVIEWABLE = ['.md', '.txt', '.py', '.js', '.ts', '.jsx', '.tsx', '.json', '.yaml', '.yml', '.html', '.css', '.png', '.jpg', '.jpeg']
 
 function FileCard({ filename, sessionId }) {
   const [expanded, setExpanded] = useState(false)
@@ -186,9 +186,11 @@ function FileCard({ filename, sessionId }) {
 
   const ext = '.' + filename.split('.').pop()
   const canPreview = PREVIEWABLE.includes(ext)
+  const isImage = ['.png', '.jpg', '.jpeg'].includes(ext)
   const downloadUrl = sessionId ? `/api/download/${sessionId}/${filename}` : `/api/download/${filename}`
 
   const loadPreview = async () => {
+    if (isImage) { setExpanded(e => !e); return }
     if (preview !== null) { setExpanded(e => !e); return }
     setLoading(true)
     try {
@@ -219,8 +221,10 @@ function FileCard({ filename, sessionId }) {
           </a>
         </div>
       </div>
-      {expanded && preview !== null && (
-        <div style={styles.preview}>{preview}</div>
+      {expanded && (
+        isImage
+          ? <img src={downloadUrl} alt={filename} style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain', display: 'block', padding: '8px' }} />
+          : preview !== null && <div style={styles.preview}>{preview}</div>
       )}
     </div>
   )

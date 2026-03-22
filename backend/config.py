@@ -63,6 +63,7 @@ class Config:
     run_code_stdout_limit: int = 3000
     run_code_stderr_limit: int = 2000
     run_code_timeout: int = 30
+    text_file_limit: int = 50_000
 
     # server section
     cors_origins: List[str] = field(
@@ -90,7 +91,11 @@ def _build() -> Config:
         run_code_stdout_limit=_env("TOOLS_RUN_CODE_STDOUT_LIMIT", tools.get("run_code_stdout_limit", Config.run_code_stdout_limit)),
         run_code_stderr_limit=_env("TOOLS_RUN_CODE_STDERR_LIMIT", tools.get("run_code_stderr_limit", Config.run_code_stderr_limit)),
         run_code_timeout=_env("TOOLS_RUN_CODE_TIMEOUT", tools.get("run_code_timeout", Config.run_code_timeout)),
-        cors_origins=_env("SERVER_CORS_ORIGINS", server.get("cors_origins", Config.__dataclass_fields__["cors_origins"].default_factory())),
+        text_file_limit=_env(
+            "TOOLS_TEXT_FILE_LIMIT",
+            tools.get("text_file_limit", Config.text_file_limit)
+        ),
+        cors_origins=_env("SERVER_CORS_ORIGINS", server.get("cors_origins", ["http://localhost:5173", "http://127.0.0.1:5173"])),
     )
 
 

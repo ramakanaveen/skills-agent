@@ -165,7 +165,7 @@ async def _agent_stream(body: RunRequest):
                 })
 
                 # Pass session_id so outputs are scoped to this session
-                result = tool_executor.execute_tool(block.name, block.input, session_id=session_id)
+                result = tool_executor.execute_tool(block.name, block.input, session_id=session_id, anthropic_client=anthropic_client)
 
                 yield sse({
                     "stage": "tool_result",

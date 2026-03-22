@@ -51,7 +51,10 @@ skills-agent/
 │   │   │   ├── docx/SKILL.md
 │   │   │   ├── skill-creator/SKILL.md
 │   │   │   ├── scripture/SKILL.md
-│   │   │   └── travel-planner/SKILL.md
+│   │   │   ├── travel-planner/SKILL.md
+│   │   │   ├── pdf-analyst/SKILL.md
+│   │   │   ├── folder-summariser/SKILL.md
+│   │   │   └── data-analyst/SKILL.md
 │   │   └── private/              # Gitignored — yours only
 │   ├── outputs/{session_id}/     # Per-session generated files (gitignored)
 │   ├── uploads/                  # User-uploaded files (gitignored)
@@ -161,12 +164,14 @@ Produces output.py in outputs/{session_id}/
 
 ### Available tools (inside skills)
 
-| Tool | What it does |
+| Tool | Purpose |
 |---|---|
-| `read_file(path)` | Read any file relative to `backend/` |
+| `read_file(path)` | Read any text file relative to `backend/` |
 | `write_file(filename, content)` | Write to `outputs/{session_id}/` or `skills/public\|private/` |
-| `run_code(filename, runtime)` | Execute from `outputs/{session_id}/`, runtime = `python3` or `node` |
-| `list_files(directory)` | List `skills/`, `uploads/`, or `outputs/` (scoped to current session) |
+| `run_code(filename, runtime)` | Execute a script from `outputs/{session_id}/`, runtime = `python3` or `node` |
+| `list_files(directory)` | Top-level listing of `skills/`, `uploads/`, or `outputs/` |
+| `scan_folder(directory, extensions?)` | Recursive scan with file metadata; optional extension filter e.g. `[".pdf", ".csv"]` |
+| `analyze_file(path, question?)` | Understand any file — PDFs and images sent to Claude natively (tables, charts, scanned pages all work); text files returned directly. Optional `question` focuses the analysis. |
 
 ### The meta-skill: skill-creator
 
@@ -192,7 +197,7 @@ The UI supports 4 themes switchable from the top nav, persisted to `localStorage
 ```bash
 cd backend
 pytest tests/ -v
-# 95 tests covering tool executor, skill loader, session, context assembler, and API
+# 109 tests covering tool executor, skill loader, session, context assembler, and API
 ```
 
 ## What's planned

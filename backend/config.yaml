@@ -25,6 +25,7 @@ tools:
   run_code_stderr_limit: 2000
   # Subprocess timeout for run_code (seconds)
   run_code_timeout: 30
+  text_file_limit: 50000
 
 server:
   # CORS allowed origins (comma-separated string or list)

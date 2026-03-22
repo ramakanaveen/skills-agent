@@ -4,6 +4,7 @@ Tests for tool_executor.py — security boundaries and per-session isolation.
 import json
 import os
 import pytest
+from unittest.mock import MagicMock
 
 import tool_executor
 from tool_executor import resolve_safe_path, execute_tool
@@ -248,6 +249,148 @@ class TestListFiles:
 # ──────────────────────────────────────────────────────────────────────────────
 # Session isolation
 # ──────────────────────────────────────────────────────────────────────────────
+
+# ──────────────────────────────────────────────────────────────────────────────
+# execute_tool — scan_folder
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestScanFolder:
+    def test_scan_uploads_returns_files(self, tmp_backend):
+        """Writing a file to uploads/ and scanning returns that filename."""
+        (tmp_backend / "uploads" / "testfile.txt").write_text("hello")
+        result = execute_tool("scan_folder", {"directory": "uploads"})
+        assert "testfile.txt" in result
+
+    def test_scan_with_extension_filter(self, tmp_backend):
+        """Extension filter returns only matching files."""
+        (tmp_backend / "uploads" / "test.pdf").write_bytes(b"%PDF-1.4")
+        (tmp_backend / "uploads" / "test.txt").write_text("plain text")
+        result = execute_tool("scan_folder", {"directory": "uploads", "extensions": [".pdf"]})
+        assert "test.pdf" in result
+        assert "test.txt" not in result
+
+    def test_scan_nonexistent_directory(self, tmp_backend):
+        """Scanning a non-existent directory returns an error string."""
+        result = execute_tool("scan_folder", {"directory": "nonexistent_dir"})
+        assert result.startswith("ERROR:")
+
+    def test_scan_respects_session_scope_for_outputs(self, tmp_backend):
+        """scan_folder('outputs') with session_id only sees that session's files."""
+        (tmp_backend / "outputs" / "sess123").mkdir(parents=True, exist_ok=True)
+        (tmp_backend / "outputs" / "sess123" / "myfile.txt").write_text("data")
+        result_correct = execute_tool("scan_folder", {"directory": "outputs"}, session_id="sess123")
+        assert "myfile.txt" in result_correct
+        result_other = execute_tool("scan_folder", {"directory": "outputs"}, session_id="other")
+        assert "myfile.txt" not in result_other
+
+    def test_scan_path_traversal_blocked(self, tmp_backend):
+        """Path traversal in scan_folder must return an error string."""
+        result = execute_tool("scan_folder", {"directory": "../../etc"})
+        assert result.startswith("ERROR:")
+
+
+class TestAnalyzeFile:
+    def test_text_file_returns_content(self, tmp_backend):
+        """Plain text files are read directly without API call."""
+        (tmp_backend / "uploads" / "notes.txt").write_text("hello world")
+        result = execute_tool(
+            "analyze_file", {"path": "uploads/notes.txt"}
+        )
+        assert "hello world" in result
+
+    def test_csv_file_returns_content(self, tmp_backend):
+        """CSV files returned as plain text."""
+        (tmp_backend / "uploads" / "data.csv").write_text("a,b,c\n1,2,3")
+        result = execute_tool(
+            "analyze_file", {"path": "uploads/data.csv"}
+        )
+        assert "a,b,c" in result
+
+    def test_text_file_truncated_at_limit(self, tmp_backend):
+        """Text files longer than text_file_limit are truncated."""
+        long_content = "x" * 100_000
+        (tmp_backend / "uploads" / "big.txt").write_text(long_content)
+        result = execute_tool(
+            "analyze_file", {"path": "uploads/big.txt"}
+        )
+        assert len(result) <= 51_000
+
+    def test_nonexistent_file_returns_error(self, tmp_backend):
+        """Missing file returns ERROR string."""
+        result = execute_tool(
+            "analyze_file", {"path": "uploads/ghost.pdf"}
+        )
+        assert result.startswith("ERROR: File not found:")
+
+    def test_unsupported_extension_returns_message(self, tmp_backend):
+        """Unsupported file type returns helpful message."""
+        (tmp_backend / "uploads" / "file.docx").write_bytes(
+            b"PK fake docx"
+        )
+        result = execute_tool(
+            "analyze_file", {"path": "uploads/file.docx"}
+        )
+        assert "Unsupported file type" in result
+        assert ".docx" in result
+
+    def test_path_traversal_blocked(self, tmp_backend):
+        """Path traversal returns security error."""
+        result = execute_tool(
+            "analyze_file", {"path": "../../etc/passwd"}
+        )
+        assert "ERROR" in result
+
+    def test_pdf_calls_anthropic_api(self, tmp_backend):
+        """PDF files trigger an Anthropic API call."""
+        (tmp_backend / "uploads" / "report.pdf").write_bytes(
+            b"%PDF-1.4 fake"
+        )
+        mock_response = MagicMock()
+        mock_response.content = [
+            MagicMock(text="This is a financial report.")
+        ]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+
+        result = execute_tool(
+            "analyze_file",
+            {"path": "uploads/report.pdf"},
+            anthropic_client=mock_client
+        )
+        assert result == "This is a financial report."
+        assert mock_client.messages.create.called
+
+    def test_png_calls_anthropic_api(self, tmp_backend):
+        """PNG image files trigger an Anthropic API call."""
+        (tmp_backend / "uploads" / "chart.png").write_bytes(
+            b"\x89PNG fake"
+        )
+        mock_response = MagicMock()
+        mock_response.content = [
+            MagicMock(text="Bar chart showing Q3 revenue.")
+        ]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+
+        result = execute_tool(
+            "analyze_file",
+            {"path": "uploads/chart.png"},
+            anthropic_client=mock_client
+        )
+        assert result == "Bar chart showing Q3 revenue."
+
+    def test_no_anthropic_client_for_pdf_returns_error(self, tmp_backend):
+        """PDF without anthropic_client returns clear error."""
+        (tmp_backend / "uploads" / "report.pdf").write_bytes(
+            b"%PDF-1.4 fake"
+        )
+        result = execute_tool(
+            "analyze_file",
+            {"path": "uploads/report.pdf"},
+            anthropic_client=None
+        )
+        assert "ERROR" in result
+
 
 class TestSessionIsolation:
     def test_session_a_file_not_visible_from_session_b(self, tmp_backend):
