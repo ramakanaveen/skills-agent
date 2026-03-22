@@ -40,8 +40,11 @@ skills-agent/
 │   ├── skill_loader.py           # Scans skills/public/ + skills/private/
 │   ├── tool_executor.py          # Executes tools with path safety + session scoping
 │   ├── session.py                # JSONL transcripts, load_history, list_sessions
-│   ├── config.yaml               # All tunable values (model, limits, timeouts)
+│   ├── config.yaml               # All tunable values — config (not secrets) lives here
 │   ├── config.py                 # Loads config.yaml with env var overrides
+│   ├── providers/
+│   │   ├── anthropic_provider.py # Direct Anthropic API client
+│   │   └── vertex_provider.py    # Vertex AI client — override _get_token() for custom auth
 │   ├── requirements.txt
 │   ├── workspace/
 │   │   ├── SOUL.md               # Agent identity

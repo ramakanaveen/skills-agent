@@ -35,9 +35,11 @@ added by dropping a new `SKILL.md` into `backend/skills/public/` or
    `backend/config.py`. Import `from config import cfg` to use them.
 
 5. **Provider switching is config-only.** `cfg.provider` is either `"anthropic"`
-   or `"vertex"`. Client init in `main.py` reads this and builds the right client.
-   `_active_model` holds the correct model name for the chosen provider.
-   Never reference `cfg.model_name` directly in the API call — use `_active_model`.
+   or `"vertex"`. `main.py` initialises `_provider` once at startup. Call
+   `_provider.get_client()` and `_provider.model_name` at the start of each
+   agent run — never construct the client inline. To add custom Vertex auth
+   (e.g. internal token service), override `_get_token()` in `VertexProvider`;
+   the client rebuilds automatically when the token changes.
 
 6. **New tools require two changes:** add an `elif` branch in
    `tool_executor.py` AND add a tool definition dict in
@@ -63,9 +65,12 @@ skills-agent/
 │   ├── context_assembler.py    # build_system_prompt(), build_tools()
 │   ├── skill_loader.py         # scan() — reads both public/ and private/
 │   ├── session.py              # save_turn(), load_history(), list_sessions()
-│   ├── config.yaml             # All tunable values
+│   ├── config.yaml             # All tunable values (config, not secrets)
 │   ├── config.py               # cfg object — import this everywhere
 │   ├── requirements.txt
+│   ├── providers/
+│   │   ├── anthropic_provider.py  # Wraps anthropic.Anthropic; key from .env
+│   │   └── vertex_provider.py     # Wraps AnthropicVertex; override _get_token()
 │   ├── workspace/
 │   │   ├── SOUL.md             # Agent identity/persona
 │   │   ├── AGENTS.md           # Behavioural rules injected into every prompt
