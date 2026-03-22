@@ -49,8 +49,17 @@ def _load_yaml() -> dict:
 
 @dataclass
 class Config:
+    # provider section
+    provider: str = "anthropic"          # "anthropic" or "vertex"
+
+    # vertex section
+    vertex_project_id: str = ""
+    vertex_region: str = "us-east5"
+    vertex_base_url: str = ""
+
     # model section
     model_name: str = "claude-sonnet-4-20250514"
+    model_vertex_name: str = "claude-sonnet-4@20250514"
     max_tokens: int = 8096
 
     # agent section
@@ -63,6 +72,7 @@ class Config:
     run_code_stdout_limit: int = 3000
     run_code_stderr_limit: int = 2000
     run_code_timeout: int = 30
+    text_file_limit: int = 50_000
 
     # server section
     cors_origins: List[str] = field(
@@ -79,9 +89,15 @@ def _build() -> Config:
     agent = raw.get("agent", {})
     tools = raw.get("tools", {})
     server = raw.get("server", {})
+    vertex = raw.get("vertex", {})
 
     return Config(
+        provider=_env("PROVIDER", raw.get("provider", Config.provider)),
+        vertex_project_id=_env("VERTEX_PROJECT_ID", vertex.get("project_id", Config.vertex_project_id)),
+        vertex_region=_env("VERTEX_REGION", vertex.get("region", Config.vertex_region)),
+        vertex_base_url=_env("VERTEX_BASE_URL", vertex.get("base_url", Config.vertex_base_url)),
         model_name=_env("MODEL_NAME", model.get("name", Config.model_name)),
+        model_vertex_name=_env("MODEL_VERTEX_NAME", model.get("vertex_name", Config.model_vertex_name)),
         max_tokens=_env("MAX_TOKENS", model.get("max_tokens", Config.max_tokens)),
         max_iterations=_env("AGENT_MAX_ITERATIONS", agent.get("max_iterations", Config.max_iterations)),
         context_budget=_env("AGENT_CONTEXT_BUDGET", agent.get("context_budget", Config.context_budget)),
@@ -90,7 +106,11 @@ def _build() -> Config:
         run_code_stdout_limit=_env("TOOLS_RUN_CODE_STDOUT_LIMIT", tools.get("run_code_stdout_limit", Config.run_code_stdout_limit)),
         run_code_stderr_limit=_env("TOOLS_RUN_CODE_STDERR_LIMIT", tools.get("run_code_stderr_limit", Config.run_code_stderr_limit)),
         run_code_timeout=_env("TOOLS_RUN_CODE_TIMEOUT", tools.get("run_code_timeout", Config.run_code_timeout)),
-        cors_origins=_env("SERVER_CORS_ORIGINS", server.get("cors_origins", Config.__dataclass_fields__["cors_origins"].default_factory())),
+        text_file_limit=_env(
+            "TOOLS_TEXT_FILE_LIMIT",
+            tools.get("text_file_limit", Config.text_file_limit)
+        ),
+        cors_origins=_env("SERVER_CORS_ORIGINS", server.get("cors_origins", ["http://localhost:5173", "http://127.0.0.1:5173"])),
     )
 
 

@@ -1,6 +1,7 @@
 import os
 import json
 import subprocess
+from datetime import datetime
 
 from config import cfg
 
@@ -19,7 +20,7 @@ def resolve_safe_path(raw_path: str) -> str:
     return full
 
 
-def execute_tool(name: str, input_data: dict, session_id: str = None) -> str:
+def execute_tool(name: str, input_data: dict, session_id: str = None, anthropic_client=None) -> str:
     """
     Execute a tool call. All output file operations are scoped to
     outputs/{session_id}/ so sessions cannot see each other's files.
@@ -108,6 +109,159 @@ def execute_tool(name: str, input_data: dict, session_id: str = None) -> str:
                 else:
                     entries.append(item)
             return "\n".join(sorted(entries)) if entries else "(empty)"
+
+        elif name == "analyze_file":
+            import base64
+
+            raw_path = input_data["path"]
+            question = input_data.get(
+                "question",
+                "Describe the contents of this file in detail."
+            )
+
+            if anthropic_client is None and os.path.splitext(raw_path)[1].lower() not in {
+                ".txt", ".md", ".csv", ".json", ".py", ".js", ".ts",
+                ".yaml", ".yml", ".html", ".css", ".xml"
+            }:
+                # Will be caught below — just need to check after path resolution
+                pass
+
+            try:
+                path = resolve_safe_path(raw_path)
+            except ValueError as e:
+                return f"ERROR: Security violation — {e}"
+
+            if not os.path.exists(path):
+                return f"ERROR: File not found: {raw_path}"
+
+            ext = os.path.splitext(path)[1].lower()
+
+            TEXT_EXTENSIONS = {
+                ".txt", ".md", ".csv", ".json",
+                ".py", ".js", ".ts", ".yaml", ".yml",
+                ".html", ".css", ".xml"
+            }
+            if ext in TEXT_EXTENSIONS:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+                return content[:cfg.text_file_limit]
+
+            IMAGE_EXTENSIONS = {
+                ".png":  "image/png",
+                ".jpg":  "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".webp": "image/webp",
+                ".gif":  "image/gif",
+            }
+
+            if ext not in {".pdf"} | set(IMAGE_EXTENSIONS.keys()):
+                return (
+                    f"Unsupported file type: {ext}. "
+                    f"Supported: PDF, images (PNG/JPG/WEBP/GIF), "
+                    f"text files (TXT/MD/CSV/JSON/PY/JS/TS/YAML/HTML/CSS/XML)"
+                )
+
+            if anthropic_client is None:
+                return "ERROR: anthropic_client not available for analyze_file"
+
+            if ext == ".pdf":
+                with open(path, "rb") as f:
+                    file_bytes = f.read()
+                b64 = base64.standard_b64encode(file_bytes).decode("utf-8")
+                try:
+                    response = anthropic_client.messages.create(
+                        model=cfg.model_name,
+                        max_tokens=2048,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "document",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": "application/pdf",
+                                        "data": b64,
+                                    }
+                                },
+                                {"type": "text", "text": question}
+                            ]
+                        }]
+                    )
+                    return response.content[0].text
+                except Exception as e:
+                    return f"ERROR analyzing PDF: {type(e).__name__}: {e}"
+
+            if ext in IMAGE_EXTENSIONS:
+                with open(path, "rb") as f:
+                    file_bytes = f.read()
+                b64 = base64.standard_b64encode(file_bytes).decode("utf-8")
+                try:
+                    response = anthropic_client.messages.create(
+                        model=cfg.model_name,
+                        max_tokens=2048,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": IMAGE_EXTENSIONS[ext],
+                                        "data": b64,
+                                    }
+                                },
+                                {"type": "text", "text": question}
+                            ]
+                        }]
+                    )
+                    return response.content[0].text
+                except Exception as e:
+                    return f"ERROR analyzing image: {type(e).__name__}: {e}"
+
+        elif name == "scan_folder":
+            directory = input_data["directory"].strip("/")
+            extensions = input_data.get("extensions", [])
+
+            if directory == "outputs" and session_id:
+                directory = f"outputs/{session_id}"
+
+            path = resolve_safe_path(directory)
+            if not os.path.isdir(path):
+                return f"ERROR: Not a directory: {directory}"
+
+            results = []
+            for root, dirs, files in os.walk(path):
+                dirs[:] = [d for d in dirs if not d.startswith(".")]
+                for filename in files:
+                    if filename.startswith("."):
+                        continue
+                    if extensions and not any(
+                        filename.lower().endswith(ext.lower())
+                        for ext in extensions
+                    ):
+                        continue
+                    filepath = os.path.join(root, filename)
+                    stat = os.stat(filepath)
+                    rel = os.path.relpath(filepath, BASE).replace(os.sep, "/")
+                    results.append({
+                        "name": filename,
+                        "path": rel,
+                        "size_bytes": stat.st_size,
+                        "modified": datetime.fromtimestamp(
+                            stat.st_mtime
+                        ).strftime("%Y-%m-%d %H:%M"),
+                    })
+
+            if not results:
+                return "No files found matching criteria"
+
+            lines = [f"Found {len(results)} file(s) in {directory}:\n"]
+            for f in results:
+                lines.append(
+                    f"  - {f['name']} ({f['size_bytes']} bytes, "
+                    f"modified {f['modified']})\n    path: {f['path']}"
+                )
+            return "\n".join(lines)
 
         return f"ERROR: Unknown tool: {name}"
 

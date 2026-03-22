@@ -17,6 +17,8 @@ import context_assembler
 import tool_executor
 import session as session_module
 from config import cfg
+from providers.anthropic_provider import AnthropicProvider
+from providers.vertex_provider import VertexProvider
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
@@ -37,9 +39,7 @@ SESSIONS_DIR = os.path.join(os.path.dirname(__file__), "sessions")
 for d in [UPLOADS_DIR, OUTPUTS_DIR, SESSIONS_DIR]:
     os.makedirs(d, exist_ok=True)
 
-anthropic_client = anthropic.Anthropic(
-    api_key=os.getenv("ANTHROPIC_API_KEY", "")
-)
+_provider = VertexProvider(cfg) if cfg.provider == "vertex" else AnthropicProvider(cfg)
 
 
 class RunRequest(BaseModel):
@@ -100,6 +100,8 @@ async def run_agent(body: RunRequest):
 async def _agent_stream(body: RunRequest):
     session_id = body.session_id or str(uuid.uuid4())
     uploaded_files = body.uploaded_files or []
+    anthropic_client = _provider.get_client()
+    active_model = _provider.model_name
 
     # Ensure per-session output directory exists
     session_output_dir = os.path.join(OUTPUTS_DIR, session_id)
@@ -128,7 +130,7 @@ async def _agent_stream(body: RunRequest):
 
         try:
             response = anthropic_client.messages.create(
-                model=cfg.model_name,
+                model=active_model,
                 max_tokens=cfg.max_tokens,
                 system=system_prompt,
                 tools=tools,
@@ -165,7 +167,7 @@ async def _agent_stream(body: RunRequest):
                 })
 
                 # Pass session_id so outputs are scoped to this session
-                result = tool_executor.execute_tool(block.name, block.input, session_id=session_id)
+                result = tool_executor.execute_tool(block.name, block.input, session_id=session_id, anthropic_client=anthropic_client)
 
                 yield sse({
                     "stage": "tool_result",

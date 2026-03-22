@@ -1,11 +1,27 @@
 # Skills Agent — Backend Configuration
+#
+# Configuration (non-secret): lives here in config.yaml
+# Secrets (API keys, tokens): live in .env — never commit .env
+#
 # All values here can be overridden with environment variables.
 # Env var name: SKILLS_AGENT_<SECTION>_<KEY> (uppercase, underscores)
-# Example: SKILLS_AGENT_MODEL_NAME=claude-opus-4-5
+# Example: SKILLS_AGENT_MODEL_NAME=claude-opus-4-6
+
+# API provider: "anthropic" (direct) or "vertex" (Google Vertex AI)
+# Override with: SKILLS_AGENT_PROVIDER
+provider: anthropic
+
+# Vertex AI settings — only required when provider: vertex
+vertex:
+  project_id: ""       # SKILLS_AGENT_VERTEX_PROJECT_ID
+  region: us-east5     # SKILLS_AGENT_VERTEX_REGION
+  base_url: ""         # SKILLS_AGENT_VERTEX_BASE_URL (optional — corporate proxy)
 
 model:
-  # Anthropic model ID to use for the agent
+  # Anthropic direct API model ID
   name: claude-sonnet-4-20250514
+  # Vertex AI model ID (@ separator instead of -)
+  vertex_name: claude-sonnet-4@20250514
   # Maximum tokens in a single API response
   max_tokens: 8096
 
@@ -25,6 +41,7 @@ tools:
   run_code_stderr_limit: 2000
   # Subprocess timeout for run_code (seconds)
   run_code_timeout: 30
+  text_file_limit: 50000
 
 server:
   # CORS allowed origins (comma-separated string or list)

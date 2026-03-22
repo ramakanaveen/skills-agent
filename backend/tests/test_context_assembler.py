@@ -103,15 +103,15 @@ class TestBuildSystemPrompt:
 
 class TestBuildTools:
     def test_returns_four_tools(self):
-        """build_tools() returns exactly 4 tool definitions."""
+        """build_tools() returns at least 4 tool definitions."""
         tools = build_tools()
-        assert len(tools) == 4
+        assert len(tools) >= 4
 
     def test_tool_names(self):
         """All expected tool names are present."""
         tools = build_tools()
         names = {t["name"] for t in tools}
-        assert names == {"read_file", "write_file", "run_code", "list_files"}
+        assert {"read_file", "write_file", "run_code", "list_files", "scan_folder", "analyze_file"}.issubset(names)
 
     def test_each_tool_has_required_keys(self):
         """Each tool dict has name, description, and input_schema."""

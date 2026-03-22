@@ -165,6 +165,7 @@ export default function ReplyBar({ onSend, running, uploadedFiles, setUploadedFi
           ref={fileRef}
           type="file"
           multiple
+          accept=".pdf,.csv,.txt,.md,.json,.py,.js,.ts,.yaml,.yml,.docx,.xlsx"
           style={{ display: 'none' }}
           onChange={handleUpload}
         />
