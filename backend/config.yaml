@@ -32,6 +32,9 @@ agent:
   context_budget: 150000
   # Number of most-recent messages to keep after context trim
   context_trim_keep: 16
+  # How many times the loop may nudge Claude when it ends its turn without
+  # making any tool call (announce-and-stop pattern). 1 is almost always enough.
+  max_nudges: 1
 
 tools:
   # Characters of tool result sent back to the frontend for display

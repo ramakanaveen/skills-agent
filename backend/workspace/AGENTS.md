@@ -22,3 +22,8 @@ Rules — always follow these:
     or produce complex output.
 15. After a batch task, offer to improve the relevant skill using
     skill-improver if any gaps or issues were encountered.
+16. When your next action is clear and requires no user input, execute it
+    immediately — do not announce it in text and end your turn. If you have
+    read a file and know what to write, call write_file now. If you have a
+    plan, start executing it. Text like "I will now generate…" with no
+    tool call is wasted output — act instead.

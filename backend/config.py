@@ -66,6 +66,7 @@ class Config:
     max_iterations: int = 20
     context_budget: int = 150_000
     context_trim_keep: int = 16
+    max_nudges: int = 1
 
     # tools section
     result_preview_chars: int = 500
@@ -102,6 +103,7 @@ def _build() -> Config:
         max_iterations=_env("AGENT_MAX_ITERATIONS", agent.get("max_iterations", Config.max_iterations)),
         context_budget=_env("AGENT_CONTEXT_BUDGET", agent.get("context_budget", Config.context_budget)),
         context_trim_keep=_env("AGENT_CONTEXT_TRIM_KEEP", agent.get("context_trim_keep", Config.context_trim_keep)),
+        max_nudges=_env("AGENT_MAX_NUDGES", agent.get("max_nudges", Config.max_nudges)),
         result_preview_chars=_env("TOOLS_RESULT_PREVIEW_CHARS", tools.get("result_preview_chars", Config.result_preview_chars)),
         run_code_stdout_limit=_env("TOOLS_RUN_CODE_STDOUT_LIMIT", tools.get("run_code_stdout_limit", Config.run_code_stdout_limit)),
         run_code_stderr_limit=_env("TOOLS_RUN_CODE_STDERR_LIMIT", tools.get("run_code_stderr_limit", Config.run_code_stderr_limit)),

@@ -220,6 +220,7 @@ agent:
   max_iterations: 20               # hard cap on agentic loop
   context_budget: 150000           # trim messages when exceeded
   context_trim_keep: 16
+  max_nudges: 1                    # nudges when Claude ends turn without tool calls
 
 tools:
   result_preview_chars: 500        # chars of tool result shown in frontend trace
