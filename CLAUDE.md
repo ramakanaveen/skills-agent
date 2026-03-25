@@ -46,10 +46,12 @@ added by dropping a new `SKILL.md` into `backend/skills/public/` or
    (e.g. internal token service), override `_get_token()` in `VertexProvider`;
    the client rebuilds automatically when the token changes.
 
-6. **New tools require two changes:** add an `elif` branch in
-   `tool_executor.py` AND add a tool definition dict in
-   `context_assembler.py` `build_tools()`. Missing either = tool silently
-   not available to the agent.
+6. **New tools require one place:** add a handler function and call
+   `registry.register(name, handler, schema)` at the bottom of
+   `tool_executor.py`. The registry feeds `context_assembler.build_tools()`
+   automatically — no changes to `context_assembler.py` needed.
+   MCP tools follow the same pattern: `mcp_manager.py` calls
+   `registry.register()` at startup for each discovered server tool.
 
 7. **Frontend config is centralised.** All API endpoint strings and UI
    constants live in `frontend/src/config.js`. Never hardcode `/api/...`
@@ -159,12 +161,16 @@ Two panels with a draggable divider (20–80%, localStorage persisted):
 
 ## How to add a new tool
 
-1. Add `elif name == "new_tool":` block in `tool_executor.py`
+1. Add a handler function `_handle_my_tool(input_data, **ctx)` in `tool_executor.py`
    - Use `resolve_safe_path()` for any file access
    - Use `cfg.*` for any configurable limits
-   - Accept `session_id` and `anthropic_client` as needed
+   - Pull `session_id = ctx.get("session_id")` and `anthropic_client = ctx.get("anthropic_client")` as needed
 
-2. Add tool dict to `build_tools()` in `context_assembler.py`
+2. Register it at the bottom of `tool_executor.py`:
+   ```python
+   registry.register("my_tool", _handle_my_tool, { ...schema dict... })
+   ```
+   `context_assembler.build_tools()` picks it up automatically — no changes needed there.
 
 3. Update `backend/workspace/TOOLS.md` with the new tool description
 
@@ -172,8 +178,8 @@ Two panels with a draggable divider (20–80%, localStorage persisted):
 
 5. Add icon to `TOOL_ICONS` in `frontend/src/components/AgentTrace.jsx`
 
-   Note: `spawn_agent` is intentionally excluded from the subagent tool list
-   inside its own implementation. Never add it back — this prevents recursive spawning.
+   Note: `spawn_agent` is excluded from subagent tool lists via
+   `registry.schemas(exclude={"spawn_agent"})`. Never remove this — it prevents recursive spawning.
 
 ---
 
