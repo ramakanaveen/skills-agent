@@ -21,15 +21,44 @@ def resolve_safe_path(raw_path: str) -> str:
     return full
 
 
+def _resolve_readable_path(raw_path: str, session_id: str | None) -> str:
+    """
+    Resolve a path for reading, applying session scoping for outputs/ paths.
+
+    write_file, list_files, and scan_folder all scope outputs/ to
+    outputs/{session_id}/ automatically. read_file and analyze_file must
+    do the same so Claude can reference its own output files without
+    knowing the session ID.
+
+    Resolution order:
+      1. If path is under outputs/ and a session is active, try
+         outputs/{session_id}/{remainder} first.
+      2. Fall back to the literal path (covers uploads/, skills/, workspace/).
+    """
+    if session_id and (raw_path == "outputs" or raw_path.startswith("outputs/")):
+        remainder = raw_path[len("outputs/"):] if raw_path.startswith("outputs/") else ""
+        if remainder:
+            scoped = f"outputs/{session_id}/{remainder}"
+            try:
+                candidate = resolve_safe_path(scoped)
+                if os.path.exists(candidate):
+                    return candidate
+            except ValueError:
+                pass  # fall through to literal path
+    return resolve_safe_path(raw_path)
+
+
 # ── Tool handlers ──────────────────────────────────────────────────────────────
 # Each handler signature: (input_data: dict, *, session_id=None, anthropic_client=None) -> str
 # Handlers are registered at the bottom of this file.
 
 
 def _handle_read_file(input_data: dict, **ctx) -> str:
-    path = resolve_safe_path(input_data["path"])
+    session_id = ctx.get("session_id")
+    raw_path = input_data["path"]
+    path = _resolve_readable_path(raw_path, session_id)
     if not os.path.exists(path):
-        return f"ERROR: File not found: {input_data['path']}"
+        return f"ERROR: File not found: {raw_path}"
     with open(path, encoding="utf-8") as f:
         return f.read()
 
@@ -163,7 +192,7 @@ def _handle_analyze_file(input_data: dict, **ctx) -> str:
     question = input_data.get("question", "Describe the contents of this file in detail.")
 
     try:
-        path = resolve_safe_path(raw_path)
+        path = _resolve_readable_path(raw_path, ctx.get("session_id"))
     except ValueError as e:
         return f"ERROR: Security violation — {e}"
 

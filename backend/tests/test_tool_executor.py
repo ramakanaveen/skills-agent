@@ -80,6 +80,31 @@ class TestReadFile:
         assert "ERROR" in result
         assert "Security violation" in result or "security" in result.lower()
 
+    def test_read_output_file_via_session_scoped_path(self, tmp_backend):
+        """
+        read_file("outputs/file.txt") should transparently find a file that
+        was written to outputs/{session_id}/file.txt — matching write_file scoping.
+        This is the core bug: Claude writes a file, then can't read it back.
+        """
+        # Write via write_file (goes to outputs/sess1/report.md)
+        execute_tool("write_file", {"filename": "report.md", "content": "# Report"}, session_id="sess1")
+        # Read back with the plain outputs/ path — should auto-resolve to session dir
+        result = execute_tool("read_file", {"path": "outputs/report.md"}, session_id="sess1")
+        assert result == "# Report"
+
+    def test_read_output_file_wrong_session_returns_error(self, tmp_backend):
+        """A file written in sess1 should not be found by sess2."""
+        execute_tool("write_file", {"filename": "secret.md", "content": "data"}, session_id="sess1")
+        result = execute_tool("read_file", {"path": "outputs/secret.md"}, session_id="sess2")
+        assert result.startswith("ERROR: File not found:")
+
+    def test_read_uploads_path_unchanged(self, tmp_backend):
+        """uploads/ paths are not affected by session scoping."""
+        f = tmp_backend / "uploads" / "policy.md"
+        f.write_text("policy content")
+        result = execute_tool("read_file", {"path": "uploads/policy.md"}, session_id="sess1")
+        assert result == "policy content"
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # execute_tool — write_file
