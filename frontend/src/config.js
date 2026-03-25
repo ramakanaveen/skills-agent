@@ -17,6 +17,7 @@ export const API = {
   skillStats: `${API_BASE}/api/skill-stats`,
   upload:     `${API_BASE}/api/upload`,
   sessions:   `${API_BASE}/api/sessions`,
+  health:     `${API_BASE}/api/health`,
   session:    (id)           => `${API_BASE}/api/session/${id}`,
   outputs:    (id)           => `${API_BASE}/api/outputs/${id}`,
   download:   (sid, file)    => `${API_BASE}/api/download/${sid}/${file}`,

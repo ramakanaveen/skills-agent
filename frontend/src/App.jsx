@@ -145,6 +145,7 @@ export default function App() {
   const [readSkills, setReadSkills] = useState(new Set())
   const [uploadedFiles, setUploadedFiles] = useState([])
   const [running, setRunning] = useState(false)
+  const [backendStatus, setBackendStatus] = useState('connecting') // 'connecting' | 'online' | 'offline'
   const [previewReady, setPreviewReady] = useState(0)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [leftWidth, setLeftWidth] = useState(() => {
@@ -187,6 +188,16 @@ export default function App() {
 
   useEffect(() => {
     fetch(API.skills).then(r => r.json()).then(setSkills).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const check = () =>
+      fetch(API.health)
+        .then(r => r.ok ? setBackendStatus('online') : setBackendStatus('offline'))
+        .catch(() => setBackendStatus('offline'))
+    check()
+    const id = setInterval(check, 30000)
+    return () => clearInterval(id)
   }, [])
 
   const newSession = () => {
@@ -316,9 +327,18 @@ export default function App() {
             {n}
           </div>
         ))}
-        <div style={s.statusPill}>
-          <span style={s.statusDot} />
-          SYSTEM CORE: STABLE
+        <div style={{
+          ...s.statusPill,
+          background: backendStatus === 'online' ? 'rgba(34,197,94,0.08)' : backendStatus === 'offline' ? 'rgba(248,81,73,0.08)' : 'rgba(210,153,34,0.08)',
+          border: `1px solid ${backendStatus === 'online' ? 'rgba(34,197,94,0.2)' : backendStatus === 'offline' ? 'rgba(248,81,73,0.2)' : 'rgba(210,153,34,0.2)'}`,
+          color: backendStatus === 'online' ? 'var(--green)' : backendStatus === 'offline' ? 'var(--red)' : 'var(--yellow)',
+        }}>
+          <span style={{
+            ...s.statusDot,
+            background: backendStatus === 'online' ? 'var(--green)' : backendStatus === 'offline' ? 'var(--red)' : 'var(--yellow)',
+            boxShadow: backendStatus === 'online' ? '0 0 6px var(--green)' : backendStatus === 'offline' ? '0 0 6px var(--red)' : '0 0 6px var(--yellow)',
+          }} />
+          {backendStatus === 'online' ? 'ONLINE' : backendStatus === 'offline' ? 'OFFLINE' : 'CONNECTING'}
         </div>
         <ThemeToggle />
       </div>
