@@ -50,10 +50,12 @@ def client(tmp_backend, monkeypatch):
     (tmp_backend / "outputs").mkdir(exist_ok=True)
     (tmp_backend / "sessions").mkdir(exist_ok=True)
 
-    # Patch the anthropic client
+    # Patch the anthropic client via the provider
     mock_messages = MagicMock()
     mock_messages.create.return_value = _make_end_turn_response()
-    monkeypatch.setattr(main.anthropic_client, "messages", mock_messages)
+    mock_client = MagicMock()
+    mock_client.messages = mock_messages
+    monkeypatch.setattr(main._provider, "get_client", lambda: mock_client)
 
     return TestClient(main.app, raise_server_exceptions=True)
 
@@ -264,3 +266,34 @@ class TestRunAgent:
         assert complete["stage"] == "complete"
         assert "session_id" in complete
         assert "output_files" in complete
+
+    def test_nudge_emitted_when_end_turn_has_no_tool_calls(self, client, monkeypatch):
+        """When Claude ends its turn without tool calls, a warning nudge event is emitted,
+        then the loop continues and eventually completes."""
+        import main
+
+        # First call: end_turn with only text (no tool calls) → triggers nudge
+        first_response = _make_end_turn_response("I will now write the file...")
+        # Second call: end_turn with text (nudge consumed, loop exits cleanly)
+        second_response = _make_end_turn_response("Done.")
+
+        call_count = {"n": 0}
+
+        def side_effect(**kwargs):
+            call_count["n"] += 1
+            return first_response if call_count["n"] == 1 else second_response
+
+        mock_messages = MagicMock()
+        mock_messages.create.side_effect = side_effect
+        mock_client = MagicMock()
+        mock_client.messages = mock_messages
+        monkeypatch.setattr(main._provider, "get_client", lambda: mock_client)
+
+        resp = client.post("/api/run", json={"task": "generate something"})
+        events = self._parse_sse(resp.text)
+
+        warning_events = [e for e in events if e.get("stage") == "warning"]
+        assert any("nudg" in e.get("text", "").lower() for e in warning_events), \
+            "Expected a nudge warning event"
+        assert events[-1]["stage"] == "complete"
+        assert call_count["n"] == 2  # exactly two API calls made

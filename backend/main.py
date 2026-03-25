@@ -121,6 +121,11 @@ async def _agent_stream(body: RunRequest):
 
     yield sse({"stage": "start", "session_id": session_id})
 
+    # Allow one automatic nudge when Claude announces intent but makes no tool call.
+    # This handles the generic "I will now do X..." → end_turn pattern where Claude
+    # plans in text but forgets to act. One nudge only — prevents infinite loops.
+    nudges_remaining = cfg.max_nudges
+
     for iteration in range(cfg.max_iterations):
         # Context budget guard
         context_size = len(json.dumps(messages, default=str)) // 4
@@ -149,6 +154,15 @@ async def _agent_stream(body: RunRequest):
 
         # Check stop condition
         if response.stop_reason == "end_turn":
+            has_tool_calls = any(block.type == "tool_use" for block in response.content)
+            # If Claude produced only text (no tool calls) and nudges remain,
+            # it likely announced intent without acting — give it one push to continue.
+            if not has_tool_calls and nudges_remaining > 0:
+                nudges_remaining -= 1
+                messages.append({"role": "assistant", "content": response.content})
+                messages.append({"role": "user", "content": "Please proceed."})
+                yield sse({"stage": "warning", "text": "Nudging agent to proceed..."})
+                continue
             session_module.save_turn(session_id, "assistant", content=assistant_text)
             break
 

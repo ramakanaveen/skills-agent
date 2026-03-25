@@ -17,6 +17,7 @@ const TOOL_ICONS = {
   list_files: '📋',
   scan_folder: '📁',
   analyze_file: '🔍',
+  spawn_agent: '🤖',
 }
 
 const COLORS = {

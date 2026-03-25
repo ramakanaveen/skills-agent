@@ -218,6 +218,115 @@ def execute_tool(name: str, input_data: dict, session_id: str = None, anthropic_
                 except Exception as e:
                     return f"ERROR analyzing image: {type(e).__name__}: {e}"
 
+        elif name == "spawn_agent":
+            from context_assembler import build_tools as _build_tools
+
+            task = input_data["task"]
+            skill_name = input_data["skill_name"]
+            input_context = input_data.get("input_data", "")
+            subagent_model = input_data.get("model", cfg.model_name)
+
+            if anthropic_client is None:
+                return "ERROR: anthropic_client not available for spawn_agent"
+
+            # Load the named skill — check public/ then private/
+            skill_path = None
+            for visibility in ["public", "private"]:
+                candidate = os.path.join(BASE, "skills", visibility,
+                                         skill_name, "SKILL.md")
+                if os.path.exists(candidate):
+                    skill_path = candidate
+                    break
+
+            if skill_path is None:
+                return f"ERROR: Skill not found: {skill_name}"
+
+            with open(skill_path, encoding="utf-8") as f:
+                skill_body = f.read()
+
+            # Load SOUL.md for subagent identity
+            soul_path = os.path.join(BASE, "workspace", "SOUL.md")
+            soul = open(soul_path, encoding="utf-8").read() \
+                   if os.path.exists(soul_path) else ""
+
+            # Lean system prompt — soul + one skill only
+            subagent_system = f"""{soul}
+
+## Your Skill
+{skill_body}
+
+## Important
+You are a focused subagent. Complete the task given to you
+using the skill above and the tools available. Be concise.
+Return your findings clearly in plain text or markdown.
+"""
+
+            # Subagent gets a reduced set of tools — no spawn_agent
+            # (no recursive spawning), no list_files complexity
+            subagent_tools = [
+                t for t in _build_tools()
+                if t["name"] in {"read_file", "write_file",
+                                 "run_code", "list_files",
+                                 "scan_folder", "analyze_file"}
+            ]
+
+            # Initial user message
+            user_message = task
+            if input_context:
+                user_message += f"\n\nContext / input data:\n{input_context[:8000]}"
+
+            messages = [{"role": "user", "content": user_message}]
+
+            # Run the subagent agentic loop (max 10 iterations)
+            try:
+                for iteration in range(10):
+                    response = anthropic_client.messages.create(
+                        model=subagent_model,
+                        max_tokens=cfg.max_tokens,
+                        system=subagent_system,
+                        tools=subagent_tools,
+                        messages=messages,
+                    )
+
+                    if response.stop_reason == "end_turn":
+                        for block in response.content:
+                            if block.type == "text" and block.text:
+                                return block.text
+                        return "Subagent completed with no text response"
+
+                    if response.stop_reason == "tool_use":
+                        messages.append({
+                            "role": "assistant",
+                            "content": response.content
+                        })
+                        tool_results = []
+                        for block in response.content:
+                            if block.type != "tool_use":
+                                continue
+                            result = execute_tool(
+                                block.name,
+                                block.input,
+                                session_id=session_id,
+                                anthropic_client=anthropic_client,
+                            )
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": result,
+                            })
+                        messages.append({
+                            "role": "user",
+                            "content": tool_results
+                        })
+                        continue
+
+                    break
+
+                return "Subagent reached iteration limit without completing"
+
+            except Exception as e:
+                return f"ERROR in subagent: {type(e).__name__}: {e}"
+
         elif name == "scan_folder":
             directory = input_data["directory"].strip("/")
             extensions = input_data.get("extensions", [])

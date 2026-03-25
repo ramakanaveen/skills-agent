@@ -38,3 +38,15 @@ analyze_file(path, question)
   Supported: PDF, PNG, JPG, WEBP, GIF, TXT, MD, CSV, JSON,
              PY, JS, TS, YAML, HTML, CSS, XML
   Path relative to backend/ e.g. "uploads/report.pdf"
+
+spawn_agent(task, skill_name, input_data, model)
+  Spawn a focused subagent with one skill loaded.
+  The subagent runs its own agentic loop and returns its result.
+  Use to delegate specialised steps in multi-step tasks.
+  The subagent shares your session — its output files appear
+  in the same outputs folder.
+  Use model="claude-haiku-4-5-20251001" for simple extraction
+  tasks (cheaper). Default model for reasoning or writing tasks.
+  You (orchestrator) synthesise subagent results — never just
+  concatenate them raw.
+  Example: spawn pdf-analyst subagent per PDF, then synthesise.
