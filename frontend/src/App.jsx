@@ -204,6 +204,7 @@ export default function App() {
     setTurns([])
     setSessionId(null)
     setOutputFiles([])
+    setUploadedFiles([])
     setReadSkills(new Set())
   }
 
@@ -233,6 +234,7 @@ export default function App() {
       setSessionId(sid)
       setTurns(reconstructTurns(transcriptData))
       setOutputFiles(files)
+      setUploadedFiles([])
       setReadSkills(new Set())
       setActiveNav('Workspace')
     } catch (e) { console.error(e) }
