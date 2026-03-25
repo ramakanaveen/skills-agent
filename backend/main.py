@@ -137,10 +137,13 @@ async def _agent_stream(body: RunRequest):
 
     yield sse({"stage": "start", "session_id": session_id})
 
-    # Allow one automatic nudge when Claude announces intent but makes no tool call.
-    # This handles the generic "I will now do X..." → end_turn pattern where Claude
-    # plans in text but forgets to act. One nudge only — prevents infinite loops.
+    # Nudge: fires when Claude ends its turn with text only (no tool calls).
+    # Handles the "I will now do X..." → end_turn pattern.
     nudges_remaining = cfg.max_nudges
+    # Continuation: fires when Claude hits the max_tokens output limit mid-response.
+    # Appends the partial response and sends "Continue." so Claude picks up where
+    # it left off. Capped at max_continuations to prevent infinite loops.
+    continuations_remaining = cfg.max_continuations
 
     for iteration in range(cfg.max_iterations):
         # Context budget guard
@@ -168,7 +171,28 @@ async def _agent_stream(body: RunRequest):
                 assistant_text = block.text
                 yield sse({"stage": "thinking", "text": block.text})
 
-        # Check stop condition
+        # max_tokens: Claude hit the output limit mid-response.
+        # Append partial content and ask it to continue from where it stopped.
+        # If tool_use blocks are present the response is malformed — surface as error.
+        if response.stop_reason == "max_tokens":
+            has_incomplete_tool_call = any(
+                block.type == "tool_use" for block in response.content
+            )
+            if has_incomplete_tool_call:
+                yield sse({"stage": "error", "text": "max_tokens hit during tool call — increase max_tokens in config.yaml"})
+                return
+            if continuations_remaining > 0:
+                continuations_remaining -= 1
+                messages.append({"role": "assistant", "content": response.content})
+                messages.append({"role": "user", "content": "Continue."})
+                yield sse({"stage": "warning", "text": f"Response truncated — continuing ({cfg.max_continuations - continuations_remaining}/{cfg.max_continuations})..."})
+                continue
+            # Exhausted continuations — save what we have and exit cleanly
+            session_module.save_turn(session_id, "assistant", content=assistant_text)
+            yield sse({"stage": "warning", "text": "Max continuations reached — output may be incomplete"})
+            break
+
+        # end_turn: normal completion
         if response.stop_reason == "end_turn":
             has_tool_calls = any(block.type == "tool_use" for block in response.content)
             # If Claude produced only text (no tool calls) and nudges remain,

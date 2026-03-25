@@ -23,7 +23,7 @@ model:
   # Vertex AI model ID (@ separator instead of -)
   vertex_name: claude-sonnet-4@20250514
   # Maximum tokens in a single API response
-  max_tokens: 8096
+  max_tokens: 16384
 
 agent:
   # Hard cap on agentic loop iterations per run
@@ -35,6 +35,10 @@ agent:
   # How many times the loop may nudge Claude when it ends its turn without
   # making any tool call (announce-and-stop pattern). 1 is almost always enough.
   max_nudges: 1
+  # How many times the loop may continue after a max_tokens stop.
+  # Each continuation appends the partial response and sends "Continue."
+  # Guards against infinite loops on genuinely unbounded output.
+  max_continuations: 3
 
 tools:
   # Characters of tool result sent back to the frontend for display
