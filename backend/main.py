@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 import uuid
@@ -153,7 +154,10 @@ async def _agent_stream(body: RunRequest):
             yield sse({"stage": "warning", "text": "Context trimmed to stay within limits"})
 
         try:
-            response = anthropic_client.messages.create(
+            # Run the blocking SDK call in a thread so the event loop stays
+            # free to serve other requests (skills tab, health, uploads, etc.)
+            response = await asyncio.to_thread(
+                anthropic_client.messages.create,
                 model=active_model,
                 max_tokens=cfg.max_tokens,
                 system=system_prompt,
@@ -220,8 +224,14 @@ async def _agent_stream(body: RunRequest):
                     "input": block.input,
                 })
 
-                # Pass session_id so outputs are scoped to this session
-                result = tool_executor.execute_tool(block.name, block.input, session_id=session_id, anthropic_client=anthropic_client)
+                # Run in a thread — covers subprocess (run_code),
+                # API calls (analyze_file), and subagent loops (spawn_agent)
+                result = await asyncio.to_thread(
+                    tool_executor.execute_tool,
+                    block.name, block.input,
+                    session_id=session_id,
+                    anthropic_client=anthropic_client,
+                )
 
                 yield sse({
                     "stage": "tool_result",

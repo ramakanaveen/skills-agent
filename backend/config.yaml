@@ -23,7 +23,7 @@ model:
   # Vertex AI model ID (@ separator instead of -)
   vertex_name: claude-sonnet-4@20250514
   # Maximum tokens in a single API response
-  max_tokens: 16384
+  max_tokens: 8192
 
 agent:
   # Hard cap on agentic loop iterations per run
