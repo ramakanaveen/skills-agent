@@ -51,3 +51,32 @@ server:
   cors_origins:
     - http://localhost:5173
     - http://127.0.0.1:5173
+
+# MCP Servers — leave as empty list to disable MCP entirely.
+# Each entry connects to one MCP server at startup, discovers its tools,
+# and registers them in the tool registry as "{server_name}__{tool_name}".
+# Auth env vars (e.g. "${GITHUB_TOKEN}") are resolved from the environment.
+# Failed servers are skipped with a warning — the app still starts.
+#
+# Supported transports:
+#   stdio — spawn a local process, communicate via JSON-RPC over stdin/stdout
+#   http  — send JSON-RPC POST requests to a running HTTP server
+#
+# Example:
+# mcp_servers:
+#   - name: github
+#     transport: stdio
+#     command: "npx -y @modelcontextprotocol/server-github"
+#     env:
+#       GITHUB_TOKEN: "${GITHUB_TOKEN}"
+#     enabled: true
+#     rate_limit: 30        # max tool calls per session (default 50)
+#
+#   - name: confluence
+#     transport: http
+#     url: "http://confluence-mcp.internal:3000"
+#     headers:
+#       Authorization: "Bearer ${CONFLUENCE_TOKEN}"
+#     enabled: true
+#     rate_limit: 50
+mcp_servers: []

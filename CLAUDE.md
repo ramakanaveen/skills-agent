@@ -67,9 +67,11 @@ added by dropping a new `SKILL.md` into `backend/skills/public/` or
 ```
 skills-agent/
 ├── backend/
-│   ├── main.py                 # FastAPI app, SSE agentic loop
-│   ├── tool_executor.py        # execute_tool(name, input, session_id, anthropic_client)
-│   ├── context_assembler.py    # build_system_prompt(), build_tools()
+│   ├── main.py                 # FastAPI app, SSE agentic loop, lifespan startup/shutdown
+│   ├── tool_registry.py        # ToolRegistry singleton — register(), execute(), schemas()
+│   ├── tool_executor.py        # Built-in tool handlers + registration; execute_tool() wrapper
+│   ├── mcp_manager.py          # MCP client (stdio + HTTP); connects servers at startup
+│   ├── context_assembler.py    # build_system_prompt(), build_tools() → registry.schemas()
 │   ├── skill_loader.py         # scan() — reads both public/ and private/
 │   ├── session.py              # save_turn(), load_history(), list_sessions()
 │   ├── config.yaml             # All tunable values (config, not secrets)
@@ -236,6 +238,22 @@ tools:
 server:
   cors_origins:
     - http://localhost:5173
+
+# MCP servers — leave empty to disable. See config.yaml for full schema.
+# Tools registered as "{server_name}__{tool_name}" (e.g. github__create_issue)
+mcp_servers: []
+# mcp_servers:
+#   - name: github
+#     transport: stdio            # stdio | http
+#     command: "npx -y @modelcontextprotocol/server-github"
+#     env:
+#       GITHUB_TOKEN: "${GITHUB_TOKEN}"   # resolved from .env
+#     rate_limit: 30              # max tool calls per session (default 50)
+#   - name: confluence
+#     transport: http
+#     url: "http://confluence-mcp.internal:3000"
+#     headers:
+#       Authorization: "Bearer ${CONFLUENCE_TOKEN}"
 ```
 
 ---

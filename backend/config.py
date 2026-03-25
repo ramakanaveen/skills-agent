@@ -83,6 +83,9 @@ class Config:
         ]
     )
 
+    # mcp section — list of server config dicts (see config.yaml for schema)
+    mcp_servers: List[dict] = field(default_factory=list)
+
 
 def _build() -> Config:
     raw = _load_yaml()
@@ -113,6 +116,7 @@ def _build() -> Config:
             tools.get("text_file_limit", Config.text_file_limit)
         ),
         cors_origins=_env("SERVER_CORS_ORIGINS", server.get("cors_origins", ["http://localhost:5173", "http://127.0.0.1:5173"])),
+        mcp_servers=raw.get("mcp_servers", []),
     )
 
 

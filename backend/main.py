@@ -2,6 +2,8 @@ import os
 import json
 import uuid
 import re
+import logging
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional
 
@@ -19,10 +21,24 @@ import session as session_module
 from config import cfg
 from providers.anthropic_provider import AnthropicProvider
 from providers.vertex_provider import VertexProvider
+from mcp_manager import manager as mcp_manager
+from tool_registry import registry
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-app = FastAPI(title="Skills Agent API")
+log = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: connect MCP servers and register their tools
+    mcp_manager.startup(registry)
+    yield
+    # Shutdown: disconnect all MCP server processes
+    mcp_manager.shutdown()
+
+
+app = FastAPI(title="Skills Agent API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
